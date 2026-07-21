@@ -167,7 +167,7 @@ const Projects = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Quản lý Dự án</h1>
         <button 
           onClick={() => handleOpenModal()}

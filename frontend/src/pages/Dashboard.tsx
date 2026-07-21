@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useEffect, useState } from 'react';
+import { CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Activity, Brain, Target, TrendingUp, Users, Info, Zap, AlertTriangle } from 'lucide-react';
 import api from '../lib/api';
 
@@ -191,7 +191,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
           
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="bg-emerald-50 rounded-lg p-3 text-center border border-emerald-100">
               <span className="block text-emerald-600 font-bold mb-1">Giỏi</span>
               <p className="text-xs text-emerald-800">Hoàn thành task sớm, chất lượng cao</p>
@@ -262,7 +262,7 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mt-4">
                 <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
                   <span className="block text-gray-400 text-xs uppercase font-bold mb-1">Thời gian còn lại</span>
                   <span className="text-xl font-bold text-gray-800">{Math.floor(aiPrediction.days_left)} <span className="text-sm font-normal text-gray-500">ngày</span></span>

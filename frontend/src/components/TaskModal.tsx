@@ -2,13 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { X, Send, Paperclip, CheckSquare, Clock } from 'lucide-react';
-
-interface SubTask {
-  id: string;
-  title: string;
-  is_completed: boolean;
-}
+import { X, Send, Paperclip, CheckSquare } from 'lucide-react';
 
 interface Comment {
   _id: string;

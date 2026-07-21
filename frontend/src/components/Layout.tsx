@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, CheckSquare, Users, LogOut, UserCircle, Bell, ClipboardCheck, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Outlet, Link, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Briefcase, CheckSquare, Users, LogOut, Bell, ClipboardCheck, Shield, Menu, X } from 'lucide-react';
 import api from '../lib/api';
 import AIChatbox from './AIChatbox';
 
@@ -12,10 +12,10 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const Layout = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<any>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     api.get('/auth/me').then(res => setUser(res.data)).catch(() => {});
@@ -58,12 +58,31 @@ const Layout = () => {
   const isDirectorPlus = ['director', 'admin'].includes(userRole);
   const isAdmin = userRole === 'admin';
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm h-screen sticky top-0">
-        <div className="h-16 flex items-center px-6 border-b border-gray-200 shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm h-screen transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 shrink-0">
           <h1 className="text-xl font-bold text-blue-600">SmartWork AI</h1>
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="md:hidden text-gray-500 hover:text-gray-700"
+          >
+            <X size={24} />
+          </button>
         </div>
         <nav className="p-3 space-y-1 flex-1">
           <p className="text-xs uppercase text-gray-400 font-semibold px-3 pt-2 pb-1">Tổng quan</p>
@@ -138,9 +157,17 @@ const Layout = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-16 shrink-0 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800">Cơ quan Quản lý Tỉnh Đắk Lắk</h2>
-          <div className="flex items-center gap-4">
+        <header className="h-16 shrink-0 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            >
+              <Menu size={24} />
+            </button>
+            <h2 className="text-sm md:text-lg font-semibold text-gray-800 truncate max-w-[150px] md:max-w-none">Cơ quan Quản lý Tỉnh Đắk Lắk</h2>
+          </div>
+          <div className="flex items-center gap-2 md:gap-4">
             {/* Notification Bell */}
             <Link to="/notifications" className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
               <Bell size={22} className="text-gray-600" />

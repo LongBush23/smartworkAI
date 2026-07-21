@@ -287,7 +287,7 @@ const Tasks = () => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6 shrink-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 shrink-0 gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Bảng Công việc (Kanban)</h1>
         <div className="flex items-center gap-4">
           <div className="relative">

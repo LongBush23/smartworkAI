@@ -209,7 +209,7 @@ const Employees = () => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h2 className="text-xl font-bold mb-4">{editingEmployee ? 'Sửa Nhân sự' : 'Thêm Nhân sự mới'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Tên đăng nhập</label>
                   <input required type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -219,7 +219,7 @@ const Employees = () => {
                   <input type="password" required={!editingEmployee} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Họ tên</label>
                   <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
