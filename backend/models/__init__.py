@@ -1,0 +1,1 @@
+# SmartWork AI – models package
