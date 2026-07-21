@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
-import { UserPlus, LogIn, Mail, User, Key, Building, AlertCircle } from 'lucide-react';
+import { LogIn, User, Key, Building, AlertCircle } from 'lucide-react';
 
 const Login = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
   const [loading, setLoading] = useState(false);

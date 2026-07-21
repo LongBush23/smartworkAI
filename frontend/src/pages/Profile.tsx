@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
-import { User, Mail, Shield, Key, Save, X, BrainCircuit, Target, Star, Award, TrendingUp, Clock, Search, FileText, Camera } from 'lucide-react';
+import { User, Mail, Shield, Save, X, BrainCircuit, Target, Star, Award, TrendingUp, Clock, Search, FileText, Camera } from 'lucide-react';
 
 interface Skill {
   skill_name: string;

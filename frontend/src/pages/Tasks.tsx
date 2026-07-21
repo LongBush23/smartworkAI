@@ -51,9 +51,6 @@ const Tasks = () => {
   const [timeLogHours, setTimeLogHours] = useState('');
   const [timeLogs, setTimeLogs] = useState<any[]>([]);
 
-  // AI Suggestion State
-  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
-  const [isFetchingAi, setIsFetchingAi] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -191,12 +188,6 @@ const Tasks = () => {
     }
   };
 
-  const handleOpenTimeLogModal = () => {
-    if (editingTask) {
-      fetchTimeLogs(editingTask._id);
-      setIsTimeLogModalOpen(true);
-    }
-  };
 
   const handleSaveTimeLog = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,25 +213,6 @@ const Tasks = () => {
     return user ? user.name : 'Unknown';
   };
 
-  const handleAiSuggest = async () => {
-    if (!editingTask) return;
-    try {
-      setIsFetchingAi(true);
-      const res = await api.get(`/ai/optimize-resources/${editingTask._id}`);
-      setAiSuggestions(res.data.top_candidates || []);
-      toast.success('Đã phân tích xong');
-    } catch (err) {
-      console.error(err);
-      toast.error('Lỗi gợi ý AI');
-    } finally {
-      setIsFetchingAi(false);
-    }
-  };
-
-  const getProjectName = (id: string) => {
-    const proj = projects.find(p => p._id === id);
-    return proj ? proj.name : 'Unknown';
-  };
 
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
