@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends
 from backend.security import get_current_user
 from backend.database import db
 from backend.dependencies import require_leader_or_above
+from pydantic import BaseModel
 from backend.services.ai_core import predict_project_deadline, optimize_resources, analyze_performance, workload_analysis
+from backend.services.gemini_service import chat_with_gemini
+
+class ChatRequest(BaseModel):
+    message: str
 
 router = APIRouter()
 
@@ -58,3 +63,9 @@ async def get_workload_analysis():
     """
     result = await workload_analysis()
     return result
+
+@router.post("/chat")
+async def chat_endpoint(req: ChatRequest, current_user: dict = Depends(get_current_user)):
+    user_name = current_user.get("name", "Người dùng")
+    response_text = await chat_with_gemini(req.message, user_name)
+    return {"response": response_text}

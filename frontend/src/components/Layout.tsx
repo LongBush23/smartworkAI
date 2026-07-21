@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, CheckSquare, Users, LogOut, UserCircle, Bell, ClipboardCheck, Shield } from 'lucide-react';
 import api from '../lib/api';
+import AIChatbox from './AIChatbox';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Quản trị viên',
@@ -170,6 +171,8 @@ const Layout = () => {
           <Outlet />
         </main>
       </div>
+
+      <AIChatbox />
     </div>
   );
 };

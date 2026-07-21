@@ -19,7 +19,7 @@ async def get_match_score_from_gemini(user: dict, task: dict) -> Dict[str, Any]:
         return fallback_match_logic(user, task)
     
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         user_info = {
             "name": user.get("name"),
@@ -92,3 +92,40 @@ def fallback_match_logic(user: dict, task: dict) -> Dict[str, Any]:
         "match_score": round(max(0, min(100, final_score)), 1),
         "reasoning": f"Khớp {matched}/{len(required_skills)} kỹ năng yêu cầu (Không có Gemini)."
     }
+
+async def chat_with_gemini(message: str, user_name: str, history: list = None) -> str:
+    """
+    Trợ lý AI trả lời tin nhắn của người dùng dựa trên mô hình Gemini.
+    """
+    if not GEMINI_API_KEY:
+        return "Xin lỗi, API Key của Gemini chưa được cấu hình. Vui lòng liên hệ Admin."
+
+    try:
+        system_prompt = f"""
+        Bạn là SmartWork AI, một trợ lý ảo thông minh được tích hợp trực tiếp vào phần mềm quản lý công việc và nhân sự SmartWork.
+        Bạn đang trò chuyện với người dùng tên là '{user_name}'.
+        
+        Nhiệm vụ của bạn:
+        1. Giải đáp các thắc mắc liên quan đến tính năng của hệ thống (Quản lý dự án, Công việc, Đánh giá nhân sự, Dự báo tiến độ).
+        2. Hỗ trợ nhân viên về mặt chuyên môn hoặc giải quyết lỗi code/công việc nếu họ cần.
+        3. Luôn giữ thái độ chuyên nghiệp, thân thiện, trả lời ngắn gọn, có cấu trúc rõ ràng (sử dụng markdown).
+        4. Hạn chế tối đa việc trả lời các câu hỏi không liên quan đến công việc hoặc phần mềm.
+        
+        Tin nhắn của người dùng: {message}
+        """
+
+        try:
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            response = model.generate_content(system_prompt)
+        except Exception as inner_e:
+            if "404" in str(inner_e):
+                model = genai.GenerativeModel('gemini-flash-latest')
+                response = model.generate_content(system_prompt)
+            else:
+                raise inner_e
+                
+        return response.text
+
+    except Exception as e:
+        print(f"Gemini Chat Error: {str(e)}")
+        return "Tôi đang gặp chút sự cố khi xử lý câu hỏi của bạn. Vui lòng thử lại sau nhé."
