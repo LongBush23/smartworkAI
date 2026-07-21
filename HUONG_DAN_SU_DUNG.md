@@ -10,6 +10,24 @@ Chào mừng bạn đến với **SmartWork AI** - Hệ thống Quản lý Công
 - Nhập **Tên đăng nhập** và **Mật khẩu** do Ban Quản trị cấp.
 - *Lưu ý:* Hệ thống không có nút "Đăng ký" tự do. Mọi tài khoản đều phải được cấp phát nội bộ bởi tài khoản có quyền Quản trị viên (Admin) hoặc Trưởng phòng (Director).
 
+### Danh sách các tài khoản Demo có sẵn để thử nghiệm:
+
+**1. Cấp Quản trị tối cao (Admin)**
+*Quyền cao nhất, xem được mọi thứ và quản lý nhân sự*
+- **Tài khoản:** `admin` | **Mật khẩu:** `admin123`
+
+**2. Cấp Trưởng phòng (Director)**
+*Quản lý phòng ban, tạo dự án lớn, cấp tài khoản*
+- **Tài khoản:** `director_tech`, `director_mkt`, `director_hr`, `director_finance` | **Mật khẩu:** `123456`
+
+**3. Cấp Trưởng nhóm (Leader)**
+*Chuyên tạo dự án con, giao việc cho nhân viên*
+- **Tài khoản:** `leader1`, `leader2`, `leader3`, `leader4` | **Mật khẩu:** `123456`
+
+**4. Cấp Nhân viên (Staff)**
+*Chỉ xem được dự án mình tham gia, cập nhật tiến độ task*
+- **Tài khoản:** `user0` đến `user19` (ví dụ: `user1`, `user15`) | **Mật khẩu:** `123456`
+
 ---
 
 ## 2. Giao diện Tổng quan (Dashboard)
