@@ -1014,4 +1014,4 @@ performance_analyzer = PerformanceAnalyzer()
 
 Quản lý: director_khdt (Pass: 123456)
 Admin: admin (Pass: admin123)
-Nhân viên: user0 đến user99 (Pass: 123456)
+Nhân viên: user0 đến user19 (Pass: 123456)

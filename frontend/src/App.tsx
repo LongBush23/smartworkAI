@@ -11,6 +11,10 @@ import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import TaskRequests from './pages/TaskRequests';
 import AuditLogs from './pages/AuditLogs';
+import KPIDashboard from './pages/KPIDashboard';
+import KPICatalogPage from './pages/KPICatalog';
+import KPIEvaluate from './pages/KPIEvaluate';
+import KPIResults from './pages/KPIResults';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
@@ -32,6 +36,12 @@ function App() {
               <Route path="notifications" element={<Notifications />} />
               <Route path="requests" element={<TaskRequests />} />
               <Route path="audit-logs" element={<AuditLogs />} />
+              <Route path="kpi">
+                <Route index element={<KPIDashboard />} />
+                <Route path="catalog" element={<KPICatalogPage />} />
+                <Route path="evaluate" element={<KPIEvaluate />} />
+                <Route path="results" element={<KPIResults />} />
+              </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>

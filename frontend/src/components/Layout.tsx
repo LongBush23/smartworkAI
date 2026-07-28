@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, CheckSquare, Users, LogOut, Bell, ClipboardCheck, Shield, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Briefcase, CheckSquare, Users, LogOut, Bell, ClipboardCheck, Shield, Menu, X, Award, FileText, BarChart2 } from 'lucide-react';
 import api from '../lib/api';
 import AIChatbox from './AIChatbox';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Quản trị viên',
-  director: 'Trưởng phòng',
-  leader: 'Nhóm trưởng',
-  staff: 'Chuyên viên',
+  director: 'Lãnh đạo cấp Vụ/Cục',
+  leader: 'Lãnh đạo cấp Phòng',
+  staff: 'Công chức / Viên chức',
 };
 
 const Layout = () => {
@@ -108,6 +108,26 @@ const Layout = () => {
               {unreadCount > 0 && (
                 <span className="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>
               )}
+            </Link>
+          )}
+
+          <p className="text-xs uppercase text-gray-400 font-semibold px-3 pt-4 pb-1">Đánh giá KPI</p>
+          <Link to="/kpi" className={linkClass('/kpi')}>
+            <BarChart2 size={20} />
+            <span>Tổng quan KPI</span>
+          </Link>
+          <Link to="/kpi/evaluate" className={linkClass('/kpi/evaluate')}>
+            <FileText size={20} />
+            <span>Quy trình đánh giá</span>
+          </Link>
+          <Link to="/kpi/results" className={linkClass('/kpi/results')}>
+            <Award size={20} />
+            <span>Kết quả xếp loại</span>
+          </Link>
+          {isDirectorPlus && (
+            <Link to="/kpi/catalog" className={linkClass('/kpi/catalog')}>
+              <ClipboardCheck size={20} />
+              <span>Danh mục nhiệm vụ</span>
             </Link>
           )}
 

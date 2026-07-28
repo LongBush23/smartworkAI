@@ -235,7 +235,7 @@ const Profile = () => {
               </label>
             </div>
             <h2 className="text-xl font-bold text-gray-800">{name}</h2>
-            <p className="text-gray-500 mb-4">{user?.role === 'admin' ? 'Quản trị viên (Admin)' : 'Cán bộ/Chuyên viên'}</p>
+            <p className="text-gray-500 mb-4">{user?.role === 'admin' ? 'Quản trị viên (Admin)' : user?.role === 'director' ? 'Lãnh đạo cấp Vụ/Cục' : user?.role === 'leader' ? 'Lãnh đạo cấp Phòng' : 'Công chức / Viên chức'}</p>
           </div>
 
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-sm border border-indigo-100 p-6">

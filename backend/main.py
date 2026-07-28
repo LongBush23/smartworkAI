@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import auth, projects, employees, tasks, ai, timelogs, task_requests, notifications, comments
+from backend.routers import auth, projects, employees, tasks, ai, timelogs, task_requests, notifications, comments, kpi
 from backend.services.seeder import run_seed
 
 app = FastAPI(title="SmartWork AI API")
@@ -23,6 +23,7 @@ app.include_router(comments.router, prefix="/api/tasks", tags=["comments"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(timelogs.router, prefix="/api/timelogs", tags=["timelogs"])
 app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
+app.include_router(kpi.router, tags=["kpi"])
 
 # Audit logs endpoint (Admin only)
 from fastapi import Depends

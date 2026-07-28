@@ -211,6 +211,8 @@ class TaskBase(BaseModel):
     max_assignees: int = 1
     subtasks: List[SubTask] = []
     attachments: List[str] = []
+    revision_count: int = 0
+    reminder_count: int = 0
 
 class TaskCreate(TaskBase):
     pass
@@ -229,6 +231,8 @@ class TaskUpdate(BaseModel):
     max_assignees: Optional[int] = None
     subtasks: Optional[List[SubTask]] = None
     attachments: Optional[List[str]] = None
+    revision_count: Optional[int] = None
+    reminder_count: Optional[int] = None
 
 class TaskResponse(TaskBase):
     id: str = Field(alias="_id")
