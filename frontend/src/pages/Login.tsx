@@ -51,8 +51,12 @@ const Login = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
           <div className="mx-auto w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-200 transform rotate-3">
             <Building className="text-white w-8 h-8 -rotate-3" />
           </div>
-          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">SmartWork AI</h2>
-          <p className="text-gray-500 mt-2 text-sm">Hệ thống Điều phối Công việc Thông minh</p>
+          <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Hệ thống Tính điểm KPI</h2>
+          <p className="text-gray-600 mt-1 text-sm font-medium">Công an nhân dân</p>
+          <p className="text-gray-400 mt-2 text-xs leading-relaxed">
+            Đánh giá, xếp loại chất lượng tập thể, cá nhân<br />
+            theo Hướng dẫn số 20-HD/ĐUCA
+          </p>
         </div>
 
         {errorMsg && (

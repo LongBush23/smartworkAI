@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { kpiApi } from '../lib/kpi-api';
 import type { KPIRankingItem } from '../lib/kpi-api';
 import { Award, FileBarChart, Filter } from 'lucide-react';
-import api from '../lib/api';
 import { KPI_GROUP_LABELS, KPI_GROUP_COLORS } from '../lib/kpi-api';
 
 const KPIResults = () => {

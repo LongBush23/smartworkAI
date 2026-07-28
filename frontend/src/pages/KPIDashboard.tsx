@@ -3,22 +3,16 @@ import { kpiApi } from '../lib/kpi-api';
 import type { KPIRankingItem } from '../lib/kpi-api';
 import { Target, Users, Activity, Medal, Star, AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import api from '../lib/api';
 import { KPI_GROUP_LABELS, KPI_GROUP_COLORS } from '../lib/kpi-api';
 
 const KPIDashboard = () => {
   const [ranking, setRanking] = useState<KPIRankingItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState('staff');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const meRes = await api.get('/auth/me');
-        setUserRole(meRes.data.role);
-
-        // For dashboard, get ranking for current year
         const currentYear = new Date().getFullYear();
         const rankingRes = await kpiApi.getRanking({ period_year: currentYear });
         setRanking(rankingRes);

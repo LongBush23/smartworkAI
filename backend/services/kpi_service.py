@@ -35,12 +35,20 @@ def get_timeline_percent(tier: str) -> float:
 
 # ================= 2. SCORE CALCULATION (A, B, C) =================
 
+# Phụ lục Hướng dẫn 20-HD/ĐUCA ghi điểm A, B, C ở 03 chữ số thập phân
+# (ví dụ: 01 | 0,939 | 01) và tính KPI từ chính các giá trị đã ghi đó.
+# Làm tròn tại nguồn để kết quả trùng với cách tính chính thức.
+SCORE_PRECISION = 3
+# Điểm KPI được ghi ở 02 chữ số thập phân (ví dụ: 97,97)
+KPI_PRECISION = 2
+
+
 def calculate_score_A(task_scores: List[dict], total_assigned_points: int) -> float:
     """Điểm số lượng = Σ(điểm CV đã hoàn thành) / Σ(điểm CV được giao)"""
     if total_assigned_points == 0:
         return 0.0
     completed_points = sum(task.get("kpi_point", 0) for task in task_scores if task.get("is_completed", False))
-    return completed_points / total_assigned_points
+    return round(completed_points / total_assigned_points, SCORE_PRECISION)
 
 def get_task_quality_score(task: dict) -> float:
     """Tính điểm chất lượng của 1 công việc từ quality_tier"""
@@ -61,14 +69,14 @@ def calculate_score_B(task_scores: List[dict], total_assigned_points: int) -> fl
     if total_assigned_points == 0:
         return 0.0
     quality_points = sum(get_task_quality_score(task) for task in task_scores if task.get("is_completed", False))
-    return quality_points / total_assigned_points
+    return round(quality_points / total_assigned_points, SCORE_PRECISION)
 
 def calculate_score_C(task_scores: List[dict], total_assigned_points: int) -> float:
     """Điểm tiến độ = Σ(kpi_point × timeline_percent) / Σ(điểm CV được giao)"""
     if total_assigned_points == 0:
         return 0.0
     timeline_points = sum(get_task_timeline_score(task) for task in task_scores if task.get("is_completed", False))
-    return timeline_points / total_assigned_points
+    return round(timeline_points / total_assigned_points, SCORE_PRECISION)
 
 # ================= 3. SCORE D (LEADERSHIP) =================
 
@@ -105,11 +113,19 @@ async def calculate_score_D(leader_id: str, period_month: Optional[int], period_
 # ================= 4. KPI AGGREGATION & GROUPS =================
 
 def calculate_kpi(score_A: float, score_B: float, score_C: float, score_D: Optional[float] = None, is_leader: bool = False) -> float:
-    """Calculate final KPI score."""
+    """
+    Điểm KPI (tỷ lệ phần trăm 0 - 100, có thể vượt 100 khi hoàn thành vượt mức):
+      - Tập thể / cá nhân không là lãnh đạo, chỉ huy: (A + B + C) / 3 x 100
+      - Cá nhân là lãnh đạo, chỉ huy:                 (A + B + C + D) / 4 x 100
+
+    Làm tròn 02 chữ số thập phân đúng như Phụ lục ghi (ví dụ: 97,97), vì
+    giá trị này được dùng tiếp để tính tổng điểm xếp loại (E + KPI x 0,7).
+    """
     if is_leader and score_D is not None:
-        return ((score_A + score_B + score_C + score_D) / 4) * 100
+        kpi = ((score_A + score_B + score_C + score_D) / 4) * 100
     else:
-        return ((score_A + score_B + score_C) / 3) * 100
+        kpi = ((score_A + score_B + score_C) / 3) * 100
+    return round(kpi, KPI_PRECISION)
 
 def determine_kpi_group(kpi_score: float) -> str:
     """Classify into groups"""

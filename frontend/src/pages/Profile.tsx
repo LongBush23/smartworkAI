@@ -1,500 +1,326 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import api from '../lib/api';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { User, Mail, Shield, Save, X, BrainCircuit, Target, Star, Award, TrendingUp, Clock, Search, FileText, Camera } from 'lucide-react';
+import { User, KeyRound, Save, Award, Building2 } from 'lucide-react';
+import api from '../lib/api';
+import { kpiApi, KPI_GROUP_LABELS, KPI_GROUP_COLORS } from '../lib/kpi-api';
+import type { KPIEvaluation } from '../lib/kpi-api';
 
-interface Skill {
-  skill_name: string;
-  self_rating: number;
-  verified_rating?: number | null;
-}
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Quản trị hệ thống',
+  director: 'Lãnh đạo đơn vị',
+  leader: 'Lãnh đạo, chỉ huy',
+  staff: 'Cán bộ, chiến sĩ',
+};
 
-interface Preferences {
-  interests: string[];
-  preferred_task_types: string[];
-  max_concurrent_tasks: number;
-}
-
-const SKILL_CATEGORIES = [
-  {
-    id: "hanh-chinh",
-    name: "🏛 Hành chính & Tổng hợp",
-    skills: ["Soạn thảo văn bản", "Văn thư lưu trữ", "Quản lý con dấu", "Tổ chức sự kiện", "Lên lịch công tác"]
-  },
-  {
-    id: "phap-che",
-    name: "⚖️ Pháp chế & Thanh tra",
-    skills: ["Xây dựng văn bản QPPL", "Tiếp công dân", "Giải quyết khiếu nại", "Thanh tra chuyên ngành", "Phổ biến pháp luật"]
-  },
-  {
-    id: "tai-chinh",
-    name: "💰 Tài chính & Đầu tư",
-    skills: ["Lập dự toán ngân sách", "Kế toán công", "Nghiệp vụ đấu thầu", "Thẩm định dự án", "Giải ngân vốn"]
-  },
-  {
-    id: "cong-nghe",
-    name: "💻 Chuyển đổi số & CNTT",
-    skills: ["Vận hành Cổng DVC", "Quản trị mạng", "An toàn thông tin", "Phân tích Dữ liệu", "Số hoá hồ sơ"]
-  },
-  {
-    id: "ky-nang-mem",
-    name: "🤝 Kỹ năng Bổ trợ",
-    skills: ["Điều hành cuộc họp", "Xử lý khủng hoảng", "Tiếng Anh chuyên ngành", "Giao tiếp công chúng", "Tiếng Ê Đê"]
-  }
-];
+const QUARTERS: Record<number, number[]> = {
+  1: [1, 2, 3], 2: [4, 5, 6], 3: [7, 8, 9], 4: [10, 11, 12],
+};
 
 const Profile = () => {
-  const [user, setUser] = useState<any>(null);
+  const [me, setMe] = useState<any>(null);
+  const [departmentName, setDepartmentName] = useState('—');
+  const [evaluations, setEvaluations] = useState<KPIEvaluation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [changingPass, setChangingPass] = useState(false);
+  const [tab, setTab] = useState<'info' | 'kpi' | 'password'>('info');
 
-  // Form states
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [avatar, setAvatar] = useState('');
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [bio, setBio] = useState('');
-  
-  const [preferences, setPreferences] = useState<Preferences>({
-    interests: [],
-    preferred_task_types: [],
-    max_concurrent_tasks: 3
-  });
-  
-  const [newInterest, setNewInterest] = useState('');
-  
-  // Skill UI states
-  const [activeCategory, setActiveCategory] = useState<string>("hanh-chinh");
-  const [skillSearch, setSkillSearch] = useState('');
+  const [form, setForm] = useState({ name: '', email: '', position: '', rank: '', bio: '' });
+  const [pwd, setPwd] = useState({ old_password: '', new_password: '', confirm: '' });
 
-  // Password states
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const year = new Date().getFullYear();
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const fetchProfile = async () => {
+  const load = async () => {
     try {
-      const res = await api.get('/auth/me');
-      setUser(res.data);
-      setName(res.data.name || '');
-      setEmail(res.data.email || '');
-      setAvatar(res.data.avatar || '');
-      setBio(res.data.bio || '');
-      setSkills(res.data.skills || []);
-      if (res.data.preferences) {
-        setPreferences(res.data.preferences);
+      setLoading(true);
+      const meRes = await api.get('/auth/me');
+      setMe(meRes.data);
+      setForm({
+        name: meRes.data.name ?? '',
+        email: meRes.data.email ?? '',
+        position: meRes.data.position ?? '',
+        rank: meRes.data.rank ?? '',
+        bio: meRes.data.bio ?? '',
+      });
+
+      if (meRes.data.department_id) {
+        api.get(`/departments/${meRes.data.department_id}`)
+          .then(r => setDepartmentName(r.data.name))
+          .catch(() => setDepartmentName('—'));
       }
+
+      const evals = await kpiApi
+        .getEvaluations({ target_id: meRes.data._id, period_year: year })
+        .catch(() => []);
+      setEvaluations(evals);
     } catch (error) {
-      toast.error('Không thể tải thông tin cá nhân');
+      console.error('Không tải được hồ sơ cán bộ', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleSkill = (skillName: string) => {
-    const exists = skills.find(s => s.skill_name === skillName);
-    if (exists) {
-      setSkills(skills.filter(s => s.skill_name !== skillName));
-    } else {
-      setSkills([...skills, { skill_name: skillName, self_rating: 3 }]);
-    }
-  };
-
-  const handleUpdateSkillRating = (skillName: string, rating: number) => {
-    setSkills(skills.map(s => s.skill_name === skillName ? { ...s, self_rating: rating } : s));
-  };
-
-  const handleAddInterest = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newInterest.trim() !== '') {
-      e.preventDefault();
-      if (!preferences.interests.includes(newInterest.trim())) {
-        setPreferences({...preferences, interests: [...preferences.interests, newInterest.trim()]});
-      }
-      setNewInterest('');
-    }
-  };
-
-  const handleRemoveInterest = (item: string) => {
-    setPreferences({...preferences, interests: preferences.interests.filter(i => i !== item)});
-  };
-
-  const handleUpdateProfile = async (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     try {
-      await api.put('/auth/profile', {
-        name,
-        email,
-        avatar,
-        bio,
-        skills,
-        preferences
-      });
-      toast.success('Cập nhật hồ sơ thành công');
-      fetchProfile();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Lỗi cập nhật hồ sơ');
-    } finally {
-      setSaving(false);
-    }
+      await api.put('/auth/profile', form);
+      toast.success('Đã cập nhật hồ sơ');
+      load();
+    } catch { toast.error('Không cập nhật được hồ sơ'); }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      toast.error('Mật khẩu xác nhận không khớp');
+    if (pwd.new_password !== pwd.confirm) {
+      toast.error('Mật khẩu mới nhập lại không khớp');
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
+    if (pwd.new_password.length < 6) {
+      toast.error('Mật khẩu mới phải từ 6 ký tự');
       return;
     }
-    
-    setChangingPass(true);
     try {
       await api.post('/auth/change-password', {
-        old_password: oldPassword,
-        new_password: newPassword
+        old_password: pwd.old_password,
+        new_password: pwd.new_password,
       });
-      toast.success('Đổi mật khẩu thành công');
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Lỗi đổi mật khẩu');
-    } finally {
-      setChangingPass(false);
+      toast.success('Đã đổi mật khẩu');
+      setPwd({ old_password: '', new_password: '', confirm: '' });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'Không đổi được mật khẩu');
     }
   };
 
-  const filteredCategories = useMemo(() => {
-    if (!skillSearch.trim()) return SKILL_CATEGORIES;
-    const lowerSearch = skillSearch.toLowerCase();
-    return SKILL_CATEGORIES.map(cat => ({
-      ...cat,
-      skills: cat.skills.filter(s => s.toLowerCase().includes(lowerSearch))
-    })).filter(cat => cat.skills.length > 0);
-  }, [skillSearch]);
-
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Đang tải dữ liệu...</div>;
+    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
   }
 
-  const aiMetrics = user?.ai_metrics || {
-    historical_quality_score: 0,
-    on_time_rate: 0,
-    capacity_hours_per_week: 40,
-    current_workload_hours: 0
-  };
+  const monthly = evaluations
+    .filter(e => e.period_type === 'monthly' && e.overall_status === 'approved' && e.approval?.kpi_score != null)
+    .sort((a, b) => (a.period_month ?? 0) - (b.period_month ?? 0));
+
+  const avg = (scores: number[]) =>
+    scores.length ? scores.reduce((s, v) => s + v, 0) / scores.length : null;
+
+  const yearlyAvg = avg(monthly.map(e => Number(e.approval.kpi_score)));
+
+  const isCommander = me?.role === 'leader' || me?.role === 'director';
+
+  const tabClass = (t: string) =>
+    `px-4 py-2.5 text-sm font-medium border-b-2 transition ${
+      tab === t ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+    }`;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-        <User className="text-blue-600" /> Hồ sơ Năng lực (AI Profile)
-      </h1>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-gray-800">Hồ sơ cán bộ</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        
-        {/* Left Column: Avatar & AI Metrics */}
-        <div className="col-span-1 space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center">
-            <div className="relative group mb-4">
-              <div className="w-24 h-24 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-4xl font-bold overflow-hidden border-4 border-white shadow-sm">
-                {avatar ? (
-                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  name ? name.charAt(0).toUpperCase() : 'U'
-                )}
-              </div>
-              <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                <Camera size={24} />
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      if (file.size > 2 * 1024 * 1024) {
-                        toast.error('Kích thước ảnh tối đa là 2MB');
-                        return;
-                      }
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setAvatar(reader.result as string);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }} 
-                />
-              </label>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">{name}</h2>
-            <p className="text-gray-500 mb-4">{user?.role === 'admin' ? 'Quản trị viên (Admin)' : user?.role === 'director' ? 'Lãnh đạo cấp Vụ/Cục' : user?.role === 'leader' ? 'Lãnh đạo cấp Phòng' : 'Công chức / Viên chức'}</p>
+      {/* Thẻ thông tin */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center text-2xl font-bold shrink-0 overflow-hidden">
+            {me?.avatar
+              ? <img src={me.avatar} alt="" className="w-full h-full object-cover" />
+              : (me?.name?.charAt(0).toUpperCase() ?? 'U')}
           </div>
-
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-sm border border-indigo-100 p-6">
-            <h3 className="text-md font-bold text-indigo-900 mb-4 flex items-center gap-2">
-              <BrainCircuit size={20} /> Điểm Hiệu suất (AI)
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-indigo-700 flex items-center gap-1"><Star size={14}/> Điểm Chất lượng</span>
-                  <span className="font-bold text-indigo-900">{aiMetrics.historical_quality_score}/100</span>
-                </div>
-                <div className="w-full bg-indigo-200 rounded-full h-2">
-                  <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${aiMetrics.historical_quality_score}%` }}></div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-indigo-700 flex items-center gap-1"><Target size={14}/> Tỷ lệ Đúng hạn</span>
-                  <span className="font-bold text-indigo-900">{Math.round(aiMetrics.on_time_rate * 100)}%</span>
-                </div>
-                <div className="w-full bg-indigo-200 rounded-full h-2">
-                  <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${aiMetrics.on_time_rate * 100}%` }}></div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-indigo-200/50">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-indigo-700 flex items-center gap-1"><Clock size={14}/> Tải công việc tuần</span>
-                  <span className="font-bold text-indigo-900">{aiMetrics.current_workload_hours} / {aiMetrics.capacity_hours_per_week}h</span>
-                </div>
-                <div className="w-full bg-indigo-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${aiMetrics.current_workload_hours > aiMetrics.capacity_hours_per_week ? 'bg-red-500' : 'bg-amber-500'}`} 
-                    style={{ width: `${Math.min((aiMetrics.current_workload_hours / aiMetrics.capacity_hours_per_week) * 100, 100)}%` }}>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold text-gray-800">{me?.name}</h2>
+            <p className="text-sm text-gray-600">
+              {[me?.rank, me?.position].filter(Boolean).join(' · ') || ROLE_LABELS[me?.role] || '—'}
+            </p>
+            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+              <Building2 size={12} /> {departmentName}
+              <span className="mx-1">·</span>
+              {ROLE_LABELS[me?.role] ?? me?.role}
+            </p>
           </div>
+          {isCommander && (
+            <span className="ml-auto shrink-0 px-3 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-medium">
+              Lãnh đạo, chỉ huy — KPI theo 04 tiêu chí
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex border-b border-gray-200 px-4 overflow-x-auto">
+          <button onClick={() => setTab('info')} className={tabClass('info')}>Thông tin cá nhân</button>
+          <button onClick={() => setTab('kpi')} className={tabClass('kpi')}>Điểm KPI của tôi</button>
+          <button onClick={() => setTab('password')} className={tabClass('password')}>Đổi mật khẩu</button>
         </div>
 
-        {/* Right Column: Forms */}
-        <div className="col-span-1 lg:col-span-3 space-y-6">
-          <form onSubmit={handleUpdateProfile} className="space-y-6">
-            
-            {/* General Info */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Thông tin chung</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-6">
+          {tab === 'info' && (
+            <form onSubmit={handleSaveProfile} className="space-y-4 max-w-2xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Họ và Tên</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User size={16} className="text-gray-400" />
-                    </div>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên *</label>
+                  <input
+                    required value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email công vụ</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail size={16} className="text-gray-400" />
-                    </div>
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thư điện tử *</label>
+                  <input
+                    required type="email" value={form.email}
+                    onChange={e => setForm({ ...form, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cấp bậc hàm</label>
+                  <input
+                    value={form.rank}
+                    onChange={e => setForm({ ...form, rank: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
+                  <input
+                    value={form.position}
+                    onChange={e => setForm({ ...form, position: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
                 </div>
               </div>
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Giới thiệu</label>
+                <textarea
+                  rows={3} value={form.bio}
+                  onChange={e => setForm({ ...form, bio: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-1 text-xs text-gray-500">
+                <User size={14} />
+                Tên đăng nhập <strong className="text-gray-700">{me?.username}</strong> và thẩm quyền do quản trị hệ thống quản lý.
+              </div>
+              <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                <Save size={16} /> Lưu thay đổi
+              </button>
+            </form>
+          )}
 
-            {/* AI Bio Data */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
-                <FileText size={20} className="text-blue-500" /> Kinh nghiệm thực tiễn (Bio cho AI)
-              </h3>
-              <p className="text-sm text-gray-500 mb-3">Phần này rất quan trọng. AI sẽ đọc văn bản này để hiểu sâu sắc về kinh nghiệm của bạn thay vì chỉ dựa vào Checkbox.</p>
-              <textarea 
-                rows={4}
-                value={bio}
-                onChange={e => setBio(e.target.value)}
-                placeholder="Ví dụ: Đã có 5 năm kinh nghiệm làm công tác tiếp công dân tại UBND Huyện, am hiểu sâu sắc về Luật Đất đai và từng tham gia thẩm định 3 dự án giao thông trọng điểm..."
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-none"
-              ></textarea>
-            </div>
+          {tab === 'kpi' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+                  <p className="text-xs text-indigo-700">KPI bình quân năm {year}</p>
+                  <p className="text-3xl font-bold text-indigo-700 mt-1">
+                    {yearlyAvg != null ? yearlyAvg.toFixed(2) : '–'}
+                  </p>
+                  <p className="text-[11px] text-indigo-600 mt-1">
+                    Bình quân {monthly.length} tháng đã phê duyệt
+                  </p>
+                </div>
+                {[1, 2, 3, 4].map(q => {
+                  const qScores = monthly
+                    .filter(e => QUARTERS[q].includes(e.period_month ?? 0))
+                    .map(e => Number(e.approval.kpi_score));
+                  const qAvg = avg(qScores);
+                  if (qAvg == null) return null;
+                  return (
+                    <div key={q} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <p className="text-xs text-gray-600">KPI Quý {q}</p>
+                      <p className="text-2xl font-bold text-gray-800 mt-1">{qAvg.toFixed(2)}</p>
+                      <p className="text-[11px] text-gray-500 mt-1">{qScores.length} tháng</p>
+                    </div>
+                  );
+                })}
+              </div>
 
-            {/* Categorized Skill Matrix */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
-                <Award size={20} className="text-amber-500" /> Bộ Kỹ năng Hành chính Nhà nước
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">Lựa chọn các nghiệp vụ bạn có khả năng đảm nhận và tự đánh giá mức độ thành thạo (1-5).</p>
-              
-              {/* Selected Skills Badge Area */}
-              {skills.length > 0 && (
-                <div className="mb-6 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
-                  <h4 className="text-sm font-bold text-blue-800 mb-3">Đã chọn ({skills.length}):</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {skills.map((skill, idx) => (
-                      <div key={idx} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-blue-200 shadow-sm">
-                        <div className="font-medium text-gray-800 text-sm truncate mr-2 flex-1" title={skill.skill_name}>{skill.skill_name}</div>
-                        <div className="flex items-center gap-3">
-                          <input 
-                            type="range" min="1" max="5" 
-                            value={skill.self_rating} 
-                            onChange={(e) => handleUpdateSkillRating(skill.skill_name, parseInt(e.target.value))}
-                            className="w-20 accent-blue-600"
-                          />
-                          <span className="text-sm font-bold text-blue-600 w-4">{skill.self_rating}</span>
-                          <button type="button" onClick={() => handleToggleSkill(skill.skill_name)} className="text-gray-400 hover:text-red-500">
-                            <X size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {monthly.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">
+                  Chưa có kỳ đánh giá nào được phê duyệt trong năm {year}.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                        <th className="p-3 font-medium">Kỳ</th>
+                        <th className="p-3 font-medium text-center">A</th>
+                        <th className="p-3 font-medium text-center">B</th>
+                        <th className="p-3 font-medium text-center">C</th>
+                        {isCommander && <th className="p-3 font-medium text-center">D</th>}
+                        <th className="p-3 font-medium text-center">KPI</th>
+                        <th className="p-3 font-medium text-center">E</th>
+                        <th className="p-3 font-medium text-center">Tổng điểm</th>
+                        <th className="p-3 font-medium text-center">Xếp nhóm</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {monthly.map(e => {
+                        const a = e.approval ?? {};
+                        const g = e.general_criteria ?? {};
+                        const p = (v: any) => v != null ? (Number(v) * 100).toFixed(1) + '%' : '–';
+                        return (
+                          <tr key={e.id} className="hover:bg-gray-50">
+                            <td className="p-3 font-medium text-gray-800">Tháng {e.period_month}</td>
+                            <td className="p-3 text-center text-gray-700">{p(a.score_A)}</td>
+                            <td className="p-3 text-center text-gray-700">{p(a.score_B)}</td>
+                            <td className="p-3 text-center text-gray-700">{p(a.score_C)}</td>
+                            {isCommander && <td className="p-3 text-center text-gray-700">{p(a.score_D)}</td>}
+                            <td className="p-3 text-center font-bold text-indigo-700">{Number(a.kpi_score).toFixed(1)}</td>
+                            <td className="p-3 text-center text-gray-700">{g.total_E != null ? Number(g.total_E).toFixed(1) : '–'}</td>
+                            <td className="p-3 text-center font-bold text-amber-700">
+                              {g.total_final_score != null ? Number(g.total_final_score).toFixed(1) : '–'}
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${KPI_GROUP_COLORS[a.kpi_group] ?? ''}`}>
+                                {KPI_GROUP_LABELS[a.kpi_group] ?? a.kpi_group}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
-              {/* Filter & Search UI */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden flex flex-col md:flex-row">
-                
-                {/* Left: Search & Tabs */}
-                <div className="w-full md:w-1/3 bg-gray-50 border-r border-gray-200 flex flex-col">
-                  <div className="p-3 border-b border-gray-200 bg-white">
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search size={14} className="text-gray-400" />
-                      </div>
-                      <input 
-                        type="text" 
-                        placeholder="Tìm kiếm kỹ năng..." 
-                        value={skillSearch}
-                        onChange={e => setSkillSearch(e.target.value)}
-                        className="pl-9 w-full bg-gray-100 border-none rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto max-h-[300px]">
-                    {filteredCategories.map(cat => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setActiveCategory(cat.id)}
-                        className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors border-l-4 ${activeCategory === cat.id ? 'bg-white border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:bg-gray-100'}`}
-                      >
-                        {cat.name} <span className="text-xs text-gray-400 ml-1">({cat.skills.length})</span>
-                      </button>
-                    ))}
-                    {filteredCategories.length === 0 && (
-                      <div className="p-4 text-sm text-gray-500 text-center">Không tìm thấy nhóm nào</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Checkboxes */}
-                <div className="w-full md:w-2/3 bg-white p-4 max-h-[350px] overflow-y-auto">
-                  {filteredCategories.find(c => c.id === activeCategory) ? (
-                    <div className="space-y-2">
-                      <h4 className="font-bold text-gray-800 mb-3">{filteredCategories.find(c => c.id === activeCategory)?.name}</h4>
-                      {filteredCategories.find(c => c.id === activeCategory)?.skills.map(skillName => {
-                        const isSelected = !!skills.find(s => s.skill_name === skillName);
-                        return (
-                          <label key={skillName} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 border-blue-200' : 'border-gray-200 hover:bg-gray-50'}`}>
-                            <input 
-                              type="checkbox" 
-                              checked={isSelected}
-                              onChange={() => handleToggleSkill(skillName)}
-                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                            />
-                            <span className={`ml-3 text-sm ${isSelected ? 'font-medium text-blue-900' : 'text-gray-700'}`}>{skillName}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                      Vui lòng chọn nhóm ở danh sách bên trái
-                    </div>
-                  )}
-                </div>
-              </div>
+              <p className="text-xs text-gray-500 flex items-start gap-2">
+                <Award size={14} className="mt-0.5 shrink-0" />
+                Điểm KPI hằng quý, hằng năm được xác định bằng bình quân điểm KPI hằng tháng
+                (mục 5.2 Hướng dẫn số 20-HD/ĐUCA).
+              </p>
             </div>
+          )}
 
-            {/* Work Preferences */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
-                <TrendingUp size={20} className="text-purple-500" /> Nguyện vọng phát triển (Preferences)
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Lĩnh vực muốn học hỏi thêm</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {preferences.interests.map(interest => (
-                      <span key={interest} className="bg-purple-100 text-purple-700 px-2 py-1 rounded-md text-xs flex items-center gap-1">
-                        {interest}
-                        <button type="button" onClick={() => handleRemoveInterest(interest)}><X size={12} /></button>
-                      </span>
-                    ))}
-                  </div>
-                  <input 
-                    type="text" value={newInterest} onChange={e => setNewInterest(e.target.value)} onKeyDown={handleAddInterest}
-                    placeholder="VD: Sử dụng phần mềm dự toán (Enter)" 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none text-sm focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Giới hạn Công việc đồng thời</label>
-                  <p className="text-xs text-gray-500 mb-2">AI sẽ hạn chế giao việc vượt quá ngưỡng này.</p>
-                  <input 
-                    type="number" min="1" max="10"
-                    value={preferences.max_concurrent_tasks} 
-                    onChange={e => setPreferences({...preferences, max_concurrent_tasks: parseInt(e.target.value)})}
-                    className="w-24 border border-gray-300 rounded-lg px-3 py-2 outline-none text-sm focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50">
-                <Save size={18} /> {saving ? 'Đang lưu...' : 'Lưu Hồ sơ & Cập nhật AI'}
-              </button>
-            </div>
-          </form>
-
-          {/* Password Update Form */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
-              <Shield size={20} className="text-emerald-500" /> Đổi Mật khẩu
-            </h3>
-            
-            <form onSubmit={handleChangePassword} className="space-y-4">
+          {tab === 'password' && (
+            <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu hiện tại</label>
-                <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} required className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu hiện tại *</label>
+                <input
+                  required type="password" value={pwd.old_password}
+                  onChange={e => setPwd({ ...pwd, old_password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu mới</label>
-                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu mới</label>
-                  <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu mới *</label>
+                <input
+                  required type="password" value={pwd.new_password}
+                  onChange={e => setPwd({ ...pwd, new_password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
               </div>
-
-              <div className="flex justify-end pt-2">
-                <button type="submit" disabled={changingPass} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50">
-                  <Save size={18} /> {changingPass ? 'Đang đổi...' : 'Đổi Mật khẩu'}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nhập lại mật khẩu mới *</label>
+                <input
+                  required type="password" value={pwd.confirm}
+                  onChange={e => setPwd({ ...pwd, confirm: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
               </div>
+              <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                <KeyRound size={16} /> Đổi mật khẩu
+              </button>
             </form>
-          </div>
-
+          )}
         </div>
       </div>
     </div>

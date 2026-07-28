@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, CheckSquare, Users, LogOut, Bell, ClipboardCheck, Shield, Menu, X, Award, FileText, BarChart2 } from 'lucide-react';
+import {
+  LayoutDashboard, ClipboardList, Users, LogOut, Bell, Shield, Menu, X,
+  Award, FileText, BarChart2, ListChecks, ClipboardCheck,
+} from 'lucide-react';
 import api from '../lib/api';
-import AIChatbox from './AIChatbox';
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Quản trị viên',
-  director: 'Lãnh đạo cấp Vụ/Cục',
-  leader: 'Lãnh đạo cấp Phòng',
-  staff: 'Công chức / Viên chức',
+  admin: 'Quản trị hệ thống',
+  director: 'Lãnh đạo đơn vị',
+  leader: 'Lãnh đạo, chỉ huy',
+  staff: 'Cán bộ, chiến sĩ',
 };
 
 const Layout = () => {
@@ -19,29 +21,23 @@ const Layout = () => {
 
   useEffect(() => {
     api.get('/auth/me').then(res => setUser(res.data)).catch(() => {});
-    
+
     const fetchUnreadCount = () => {
       api.get('/notifications/unread-count').then(res => setUnreadCount(res.data.count)).catch(() => {});
     };
-    
     fetchUnreadCount();
-    
-    // Poll for new notifications every 30s
     const interval = setInterval(fetchUnreadCount, 30000);
-    
-    // Listen for manual read events from Notifications page
     window.addEventListener('notificationRead', fetchUnreadCount);
-    
     return () => {
       clearInterval(interval);
       window.removeEventListener('notificationRead', fetchUnreadCount);
     };
   }, []);
 
+  useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
+
   const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {}
+    try { await api.post('/auth/logout'); } catch { /* vẫn xoá token phía client */ }
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     window.location.href = '/';
@@ -52,66 +48,50 @@ const Layout = () => {
     `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
       isActive(path) ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-100'
     }`;
+  const sectionClass = 'text-xs uppercase text-gray-400 font-semibold px-3 pt-4 pb-1';
 
   const userRole = user?.role || 'staff';
   const isLeaderPlus = ['leader', 'director', 'admin'].includes(userRole);
   const isDirectorPlus = ['director', 'admin'].includes(userRole);
   const isAdmin = userRole === 'admin';
 
-  // Close mobile menu when route changes
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location.pathname]);
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm h-screen transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 shrink-0">
-          <h1 className="text-xl font-bold text-blue-600">SmartWork AI</h1>
-          <button 
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="md:hidden text-gray-500 hover:text-gray-700"
-          >
+        <div className="h-16 flex items-center justify-between px-5 border-b border-gray-200 shrink-0">
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-blue-700 leading-tight">Hệ thống KPI</h1>
+            <p className="text-[10px] text-gray-500 leading-tight">Công an nhân dân</p>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-500 hover:text-gray-700">
             <X size={24} />
           </button>
         </div>
-        <nav className="p-3 space-y-1 flex-1">
-          <p className="text-xs uppercase text-gray-400 font-semibold px-3 pt-2 pb-1">Tổng quan</p>
+
+        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+          <p className={sectionClass}>Tổng quan</p>
           <Link to="/" className={linkClass('/')}>
             <LayoutDashboard size={20} />
-            <span>Dashboard</span>
+            <span>Trang chủ</span>
           </Link>
 
-          <p className="text-xs uppercase text-gray-400 font-semibold px-3 pt-4 pb-1">Công việc</p>
-          <Link to="/projects" className={linkClass('/projects')}>
-            <Briefcase size={20} />
-            <span>Dự án</span>
-          </Link>
+          <p className={sectionClass}>Nhiệm vụ công tác</p>
           <Link to="/tasks" className={linkClass('/tasks')}>
-            <CheckSquare size={20} />
-            <span>Công việc</span>
+            <ListChecks size={20} />
+            <span>Nhiệm vụ được giao</span>
           </Link>
-          
-          {isLeaderPlus && (
-            <Link to="/requests" className={linkClass('/requests')}>
-              <ClipboardCheck size={20} />
-              <span>Yêu cầu tham gia</span>
-              {unreadCount > 0 && (
-                <span className="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>
-              )}
+          {isDirectorPlus && (
+            <Link to="/kpi/catalog" className={linkClass('/kpi/catalog')}>
+              <ClipboardList size={20} />
+              <span>Danh mục nhiệm vụ</span>
             </Link>
           )}
 
-          <p className="text-xs uppercase text-gray-400 font-semibold px-3 pt-4 pb-1">Đánh giá KPI</p>
+          <p className={sectionClass}>Đánh giá KPI</p>
           <Link to="/kpi" className={linkClass('/kpi')}>
             <BarChart2 size={20} />
             <span>Tổng quan KPI</span>
@@ -120,51 +100,49 @@ const Layout = () => {
             <FileText size={20} />
             <span>Quy trình đánh giá</span>
           </Link>
+          {isLeaderPlus && (
+            <Link to="/kpi/criteria" className={linkClass('/kpi/criteria')}>
+              <ClipboardCheck size={20} />
+              <span>Tiêu chí chung (E)</span>
+            </Link>
+          )}
           <Link to="/kpi/results" className={linkClass('/kpi/results')}>
             <Award size={20} />
             <span>Kết quả xếp loại</span>
           </Link>
-          {isDirectorPlus && (
-            <Link to="/kpi/catalog" className={linkClass('/kpi/catalog')}>
-              <ClipboardCheck size={20} />
-              <span>Danh mục nhiệm vụ</span>
-            </Link>
-          )}
 
-          {isDirectorPlus && (
+          {(isDirectorPlus || isAdmin) && (
             <>
-              <p className="text-xs uppercase text-gray-400 font-semibold px-3 pt-4 pb-1">Quản lý</p>
-              <Link to="/employees" className={linkClass('/employees')}>
-                <Users size={20} />
-                <span>Nhân sự</span>
-              </Link>
+              <p className={sectionClass}>Quản lý</p>
+              {isDirectorPlus && (
+                <Link to="/employees" className={linkClass('/employees')}>
+                  <Users size={20} />
+                  <span>Cán bộ / Đơn vị</span>
+                </Link>
+              )}
+              {isAdmin && (
+                <Link to="/audit-logs" className={linkClass('/audit-logs')}>
+                  <Shield size={20} />
+                  <span>Nhật ký hệ thống</span>
+                </Link>
+              )}
             </>
           )}
-
-          {isAdmin && (
-            <Link to="/audit-logs" className={linkClass('/audit-logs')}>
-              <Shield size={20} />
-              <span>Nhật ký Kiểm toán</span>
-            </Link>
-          )}
         </nav>
-        
-        {/* User Card */}
-        <div className="p-4 border-t border-gray-200 space-y-3">
+
+        <div className="p-4 border-t border-gray-200 space-y-3 shrink-0">
           <Link to="/profile" className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm overflow-hidden">
-              {user?.avatar ? (
-                <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                user?.name ? user.name.charAt(0).toUpperCase() : 'U'
-              )}
+            <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
+              {user?.avatar
+                ? <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                : (user?.name ? user.name.charAt(0).toUpperCase() : 'U')}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-800 truncate">{user?.name || 'Tài khoản'}</p>
-              <p className="text-xs text-gray-500">{ROLE_LABELS[userRole] || userRole}</p>
+              <p className="text-xs text-gray-500 truncate">{user?.position || ROLE_LABELS[userRole] || userRole}</p>
             </div>
           </Link>
-          <button 
+          <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 px-3 py-2 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm"
           >
@@ -174,21 +152,20 @@ const Layout = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
         <header className="h-16 shrink-0 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <button 
+          <div className="flex items-center gap-3 min-w-0">
+            <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
             >
               <Menu size={24} />
             </button>
-            <h2 className="text-sm md:text-lg font-semibold text-gray-800 truncate max-w-[150px] md:max-w-none">Cơ quan Quản lý Tỉnh Đắk Lắk</h2>
+            <h2 className="text-sm md:text-base font-semibold text-gray-800 truncate">
+              Tính điểm KPI trong đánh giá, xếp loại chất lượng
+            </h2>
           </div>
-          <div className="flex items-center gap-2 md:gap-4">
-            {/* Notification Bell */}
+          <div className="flex items-center gap-2 md:gap-4 shrink-0">
             <Link to="/notifications" className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
               <Bell size={22} className="text-gray-600" />
               {unreadCount > 0 && (
@@ -197,29 +174,21 @@ const Layout = () => {
                 </span>
               )}
             </Link>
-            
             <Link to="/profile" className="flex items-center gap-2 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors">
-              <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm overflow-hidden">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  user?.name ? user.name.charAt(0).toUpperCase() : 'U'
-                )}
+              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden">
+                {user?.avatar
+                  ? <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                  : (user?.name ? user.name.charAt(0).toUpperCase() : 'U')}
               </div>
-              <div className="hidden md:block">
-                <span className="text-sm font-medium text-gray-700">{user?.name || 'Tài khoản'}</span>
-              </div>
+              <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name || 'Tài khoản'}</span>
             </Link>
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
           <Outlet />
         </main>
       </div>
-
-      <AIChatbox />
     </div>
   );
 };

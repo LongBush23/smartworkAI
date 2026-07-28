@@ -31,19 +31,12 @@ async def register(user: UserCreate):
         "email": user.email,
         "role": user.role.value if hasattr(user.role, 'value') else user.role,
         "department_id": user.department_id,
-        "skills": [s.model_dump() for s in user.skills] if user.skills else [],
-        "preferences": user.preferences.model_dump() if user.preferences else {},
+        "position": user.position,
+        "rank": user.rank,
         "bio": user.bio,
-        "ai_metrics": {
-            "historical_quality_score": 50.0,
-            "on_time_rate": 1.0,
-            "capacity_hours_per_week": 40,
-            "current_workload_hours": 0,
-        },
-        "availability": 100.0,
-        "current_workload": 0,
-        "quality_score": 50.0,
-        "is_admin": user.role == "admin"
+        "is_admin": user.role == "admin",
+        # Lãnh đạo, chỉ huy → KPI tính theo 04 tiêu chí (có thêm điểm D)
+        "is_commander": user.role in ("director", "leader"),
     }
     await db.users.insert_one(new_user)
     return {"message": "User created successfully"}
@@ -150,18 +143,13 @@ async def change_password(data: PasswordChange, current_user: dict = Depends(get
 @router.put("/profile")
 async def update_profile(data: ProfileUpdate, current_user: dict = Depends(get_current_user)):
     from bson import ObjectId
-    update_data = {
-        "name": data.name,
-        "email": data.email,
-        "skills": [s.model_dump() for s in data.skills]
-    }
-    if data.preferences is not None:
-        update_data["preferences"] = data.preferences.model_dump()
-    if data.bio is not None:
-        update_data["bio"] = data.bio
-    if hasattr(data, 'avatar') and data.avatar is not None:
-        update_data["avatar"] = data.avatar
-        
+    update_data = {"name": data.name, "email": data.email}
+    for field in ("position", "rank", "bio", "avatar"):
+        value = getattr(data, field, None)
+        if value is not None:
+            update_data[field] = value
+
+
     await db.users.update_one(
         {"_id": ObjectId(current_user["_id"])},
         {"$set": update_data}

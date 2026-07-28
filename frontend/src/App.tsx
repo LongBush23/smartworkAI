@@ -3,18 +3,17 @@ import { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
-import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
 import Employees from './pages/Employees';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
-import TaskRequests from './pages/TaskRequests';
 import AuditLogs from './pages/AuditLogs';
 import KPIDashboard from './pages/KPIDashboard';
 import KPICatalogPage from './pages/KPICatalog';
 import KPIEvaluate from './pages/KPIEvaluate';
 import KPIResults from './pages/KPIResults';
+import KPICriteria from './pages/KPICriteria';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
@@ -29,17 +28,16 @@ function App() {
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
-              <Route path="projects" element={<Projects />} />
               <Route path="tasks" element={<Tasks />} />
               <Route path="employees" element={<Employees />} />
               <Route path="profile" element={<Profile />} />
               <Route path="notifications" element={<Notifications />} />
-              <Route path="requests" element={<TaskRequests />} />
               <Route path="audit-logs" element={<AuditLogs />} />
               <Route path="kpi">
                 <Route index element={<KPIDashboard />} />
                 <Route path="catalog" element={<KPICatalogPage />} />
                 <Route path="evaluate" element={<KPIEvaluate />} />
+                <Route path="criteria" element={<KPICriteria />} />
                 <Route path="results" element={<KPIResults />} />
               </Route>
             </Route>

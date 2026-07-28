@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import auth, projects, employees, tasks, ai, timelogs, task_requests, notifications, comments, kpi
-from backend.services.seeder import run_seed
+from backend.routers import auth, departments, employees, tasks, notifications, comments, kpi
 
-app = FastAPI(title="SmartWork AI API")
+app = FastAPI(
+    title="Hệ thống Tính điểm KPI trong Công an nhân dân",
+    description="Theo Hướng dẫn số 20-HD/ĐUCA ngày 08/6/2026 của Ban Thường vụ Đảng ủy Công an Trung ương",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,14 +17,11 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(departments.router, prefix="/api/departments", tags=["departments"])
 app.include_router(employees.router, prefix="/api/employees", tags=["employees"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
-app.include_router(task_requests.router, prefix="/api/tasks", tags=["task_requests"])
 app.include_router(comments.router, prefix="/api/tasks", tags=["comments"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
-app.include_router(timelogs.router, prefix="/api/timelogs", tags=["timelogs"])
-app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
 app.include_router(kpi.router, tags=["kpi"])
 
 # Audit logs endpoint (Admin only)

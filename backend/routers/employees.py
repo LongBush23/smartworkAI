@@ -52,13 +52,9 @@ async def create_employee(employee: UserCreate, current_user: dict = Depends(req
         emp_dict["role"] = "staff"
     
     emp_dict["hashed_password"] = get_password_hash(emp_dict.pop("password"))
-    emp_dict["ai_metrics"] = {
-        "historical_quality_score": 50.0,
-        "on_time_rate": 1.0,
-        "capacity_hours_per_week": 40,
-        "current_workload_hours": 0,
-    }
-    
+    emp_dict["is_commander"] = emp_dict.get("role") in ("director", "leader")
+
+
     # Auto-assign department from creator if not specified
     if not emp_dict.get("department_id") and current_user.get("department_id"):
         emp_dict["department_id"] = current_user["department_id"]
@@ -75,15 +71,11 @@ async def update_employee(employee_id: str, employee: UserUpdate, current_user: 
     update_data = employee.model_dump(exclude_unset=True, by_alias=True)
     if "_id" in update_data:
         del update_data["_id"]
-    
-    # Convert nested models
-    if "skills" in update_data and update_data["skills"]:
-        update_data["skills"] = [s.model_dump() if hasattr(s, 'model_dump') else s for s in update_data["skills"]]
-    if "preferences" in update_data and update_data["preferences"]:
-        update_data["preferences"] = update_data["preferences"].model_dump() if hasattr(update_data["preferences"], 'model_dump') else update_data["preferences"]
-    if "ai_metrics" in update_data and update_data["ai_metrics"]:
-        update_data["ai_metrics"] = update_data["ai_metrics"].model_dump() if hasattr(update_data["ai_metrics"], 'model_dump') else update_data["ai_metrics"]
-    
+
+    # Đổi vai trò thì cập nhật lại cờ lãnh đạo, chỉ huy
+    if "role" in update_data:
+        update_data["is_commander"] = update_data["role"] in ("director", "leader")
+
     await db.users.update_one({"_id": ObjectId(employee_id)}, {"$set": update_data})
     
     await log_action(current_user["_id"], current_user.get("name", ""), "employee.updated", "user", employee_id, f"Fields: {list(update_data.keys())}")

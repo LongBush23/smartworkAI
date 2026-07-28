@@ -1,331 +1,309 @@
-import React, { useState, useEffect } from 'react';
-import api from '../lib/api';
+import { useState, useEffect } from 'react';
+import { X, Send, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
-import { X, Send, Paperclip, CheckSquare } from 'lucide-react';
+import api from '../lib/api';
+import { PRODUCT_LABELS, TASK_STATUS_LABELS } from '../lib/task-api';
+import type { Task, TaskProduct, TaskStatus } from '../lib/task-api';
+import {
+  qualityTierFromRevisions, timelineTierFromReminders,
+  QUALITY_PERCENT, TIMELINE_PERCENT,
+} from '../lib/kpi-api';
 
-interface Comment {
-  _id: string;
-  content: string;
-  user_name: string;
-  created_at: string;
+interface Props {
+  /** null = tạo mới, Task = xem/sửa */
+  task: Task | null;
+  users: any[];
+  catalogItems: any[];
+  canEdit: boolean;
+  onClose: () => void;
+  onSave: (data: Partial<Task>) => void;
 }
 
-export const TaskModal = ({ task, projects, users, isOpen, onClose, onSave, onDelete }: any) => {
-  if (!isOpen) return null;
+const emptyForm = {
+  title: '',
+  description: '',
+  catalog_item_id: '',
+  product: 'bao_cao' as TaskProduct,
+  kpi_point: 50,
+  quantity_assigned: 1,
+  quantity_completed: 0,
+  assigned_to: '',
+  status: 'assigned' as TaskStatus,
+  deadline: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
+};
 
-  const [activeTab, setActiveTab] = useState('details'); // details, subtasks, comments
-  const [formData, setFormData] = useState({
-    title: task?.title || '',
-    description: task?.description || '',
-    project_id: task?.project_id || (projects.length > 0 ? projects[0]._id : ''),
-    assigned_to: task?.assigned_to || '',
-    status: task?.status || 'todo',
-    deadline: task?.deadline ? task.deadline.split('T')[0] : new Date().toISOString().split('T')[0],
-    effort_required: task?.effort_required || 1,
-    subtasks: task?.subtasks || [],
-  });
-
-  // Comments state
-  const [comments, setComments] = useState<Comment[]>([]);
+export const TaskModal = ({ task, users, catalogItems, canEdit, onClose, onSave }: Props) => {
+  const [tab, setTab] = useState<'details' | 'comments'>('details');
+  const [form, setForm] = useState(emptyForm);
+  const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
 
-  // Subtasks state
-  const [newSubtask, setNewSubtask] = useState('');
-  
-  // AI Recommendation state
-  const [aiCandidates, setAiCandidates] = useState<any[]>([]);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-
   useEffect(() => {
-    if (task && activeTab === 'comments') {
-      fetchComments();
+    if (task) {
+      setForm({
+        title: task.title ?? '',
+        description: task.description ?? '',
+        catalog_item_id: task.catalog_item_id ?? '',
+        product: task.product ?? 'bao_cao',
+        kpi_point: task.kpi_point ?? 0,
+        quantity_assigned: task.quantity_assigned ?? 1,
+        quantity_completed: task.quantity_completed ?? 0,
+        assigned_to: task.assigned_to ?? '',
+        status: task.status ?? 'assigned',
+        deadline: task.deadline ? task.deadline.slice(0, 10) : emptyForm.deadline,
+      });
+      api.get(`/tasks/${task._id}/comments`)
+        .then(res => setComments(res.data))
+        .catch(() => setComments([]));
+    } else {
+      setForm(emptyForm);
+      setComments([]);
     }
-    // Clear candidates when modal closes/opens
-    if (!isOpen) {
-      setAiCandidates([]);
-    }
-  }, [task, activeTab, isOpen]);
+  }, [task]);
 
-  const fetchComments = async () => {
-    try {
-      const res = await api.get(`/tasks/${task._id}/comments`);
-      setComments(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handlePostComment = async () => {
-    if (!newComment.trim()) return;
-    try {
-      const res = await api.post(`/tasks/${task._id}/comments`, { content: newComment });
-      setComments([...comments, res.data]);
-      setNewComment('');
-    } catch (err) {
-      toast.error('Lỗi đăng bình luận');
-    }
-  };
-
-  const handleAddSubtask = () => {
-    if (!newSubtask.trim()) return;
-    const st = { id: Math.random().toString(36).substr(2, 9), title: newSubtask, is_completed: false };
-    setFormData({ ...formData, subtasks: [...formData.subtasks, st] });
-    setNewSubtask('');
-  };
-
-  const toggleSubtask = (id: string) => {
-    const updated = formData.subtasks.map((st: any) => 
-      st.id === id ? { ...st, is_completed: !st.is_completed } : st
-    );
-    setFormData({ ...formData, subtasks: updated });
-  };
-
-  const removeSubtask = (id: string) => {
-    setFormData({ ...formData, subtasks: formData.subtasks.filter((st: any) => st.id !== id) });
+  // Chọn mục trong Danh mục nhiệm vụ thì tự điền điểm theo khung đã phê duyệt
+  const handlePickCatalogItem = (itemId: string) => {
+    const item = catalogItems.find(i => i.id === itemId);
+    setForm(f => ({
+      ...f,
+      catalog_item_id: itemId,
+      ...(item ? { title: f.title || item.task_name, kpi_point: item.kpi_point } : {}),
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...formData, assigned_to: formData.assigned_to || null });
-  };
-
-  const handleSuggestAI = async () => {
-    if (!task?._id) return;
-    try {
-      setIsAiLoading(true);
-      const res = await api.get(`/ai/optimize-resources/${task._id}`);
-      setAiCandidates(res.data.top_candidates || []);
-      if (res.data.top_candidates?.length === 0) {
-        toast.error('Không tìm thấy nhân viên phù hợp');
-      }
-    } catch (err) {
-      toast.error('Lỗi khi tải gợi ý AI');
-    } finally {
-      setIsAiLoading(false);
+    if (!form.title.trim()) { toast.error('Chưa nhập nội dung nhiệm vụ'); return; }
+    if (form.quantity_completed > form.quantity_assigned) {
+      toast.error('Số lượng hoàn thành không được lớn hơn số lượng được giao');
+      return;
     }
+    onSave({
+      ...form,
+      assigned_to: form.assigned_to || undefined,
+      catalog_item_id: form.catalog_item_id || undefined,
+      deadline: new Date(form.deadline).toISOString(),
+    });
   };
 
-  const subtasksCompleted = formData.subtasks.filter((st: any) => st.is_completed).length;
-  const subtasksTotal = formData.subtasks.length;
-  const progressPercent = subtasksTotal > 0 ? Math.round((subtasksCompleted / subtasksTotal) * 100) : 0;
+  const handleAddComment = async () => {
+    if (!task || !newComment.trim()) return;
+    try {
+      await api.post(`/tasks/${task._id}/comments`, { content: newComment });
+      setNewComment('');
+      const res = await api.get(`/tasks/${task._id}/comments`);
+      setComments(res.data);
+    } catch { toast.error('Không gửi được ý kiến'); }
+  };
+
+  // Mức điểm B, C suy ra từ số lần sửa / nhắc nhở
+  const qTier = qualityTierFromRevisions(form.quantity_completed > 0 ? (task?.revision_count ?? 0) : 0);
+  const tTier = timelineTierFromReminders(task?.reminder_count ?? 0);
+  const assignedPoints = form.kpi_point * form.quantity_assigned;
+  const completedPoints = form.kpi_point * form.quantity_completed;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
-          <h2 className="text-xl font-bold text-gray-800">{task ? 'Chi tiết Công việc' : 'Tạo Công việc mới'}</h2>
-          <button onClick={onClose} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={20} />
-          </button>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 h-14 border-b border-gray-200 shrink-0">
+          <h2 className="font-semibold text-gray-800">
+            {task ? 'Chi tiết nhiệm vụ công tác' : 'Giao nhiệm vụ công tác'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={22} /></button>
         </div>
 
-        {/* Tabs */}
         {task && (
-          <div className="flex border-b border-gray-200 px-6 shrink-0 bg-gray-50">
-            <button onClick={() => setActiveTab('details')} className={`px-4 py-3 text-sm font-medium border-b-2 ${activeTab === 'details' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Thông tin chung</button>
-            <button onClick={() => setActiveTab('subtasks')} className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'subtasks' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-              <CheckSquare size={16} /> Sub-tasks ({subtasksCompleted}/{subtasksTotal})
+          <div className="flex border-b border-gray-200 px-4 shrink-0">
+            <button
+              onClick={() => setTab('details')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 ${tab === 'details' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500'}`}
+            >
+              Thông tin
             </button>
-            <button onClick={() => setActiveTab('comments')} className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'comments' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-              Bình luận
+            <button
+              onClick={() => setTab('comments')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 flex items-center gap-2 ${tab === 'comments' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500'}`}
+            >
+              <MessageSquare size={15} /> Ý kiến ({comments.length})
             </button>
           </div>
         )}
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 bg-white">
-          
-          {/* TAB: DETAILS */}
-          {activeTab === 'details' && (
-            <form id="task-form" onSubmit={handleSubmit} className="space-y-5">
+        <div className="flex-1 overflow-y-auto p-6">
+          {tab === 'details' ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {catalogItems.length > 0 && canEdit && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chọn từ Danh mục nhiệm vụ công tác
+                  </label>
+                  <select
+                    value={form.catalog_item_id}
+                    onChange={e => handlePickCatalogItem(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  >
+                    <option value="">— Nhiệm vụ ngoài Danh mục (phát sinh) —</option>
+                    {catalogItems.map(i => (
+                      <option key={i.id} value={i.id}>
+                        {i.task_name} · Nhóm {i.complexity_group} · {i.kpi_point} điểm
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Nhiệm vụ phát sinh ngoài Khung Danh mục do lãnh đạo trực tiếp giao xác định nhóm và số điểm.
+                  </p>
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tên công việc</label>
-                <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow outline-none" />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết</label>
-                <textarea required rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow outline-none"></textarea>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung nhiệm vụ *</label>
+                <input
+                  required disabled={!canEdit}
+                  value={form.title}
+                  onChange={e => setForm({ ...form, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Diễn giải</label>
+                <textarea
+                  disabled={!canEdit} rows={2}
+                  value={form.description}
+                  onChange={e => setForm({ ...form, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Thuộc dự án</label>
-                  <select required value={formData.project_id} onChange={e => setFormData({...formData, project_id: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none">
-                    <option value="">Chọn dự án</option>
-                    {projects.map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sản phẩm</label>
+                  <select
+                    disabled={!canEdit}
+                    value={form.product}
+                    onChange={e => setForm({ ...form, product: e.target.value as TaskProduct })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                  >
+                    {Object.entries(PRODUCT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="block text-sm font-medium text-gray-700">Người thực hiện</label>
-                    {task && (
-                      <button 
-                        type="button"
-                        onClick={handleSuggestAI} 
-                        disabled={isAiLoading}
-                        className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 px-2 py-0.5 rounded"
-                      >
-                        {isAiLoading ? 'Đang phân tích...' : '✨ Gợi ý AI'}
-                      </button>
-                    )}
-                  </div>
-                  <select value={formData.assigned_to} onChange={e => setFormData({...formData, assigned_to: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Chưa phân công</option>
-                    {users.map((u: any) => <option key={u._id} value={u._id}>{u.name}</option>)}
-                  </select>
-
-                  {aiCandidates.length > 0 && (
-                    <div className="mt-2 bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Top nhân sự phù hợp (Theo NLP)</p>
-                      {aiCandidates.map(c => (
-                        <div key={c._id} className="flex justify-between items-center bg-white p-2 rounded border border-indigo-50 shadow-sm">
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">{c.name}</p>
-                            <p className="text-[10px] text-gray-500 line-clamp-1">Kỹ năng: {c.skills?.join(', ') || 'Chưa cập nhật'}</p>
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-xs font-bold text-emerald-600">{c.nlp_similarity.toFixed(0)}% Khớp</span>
-                            <button 
-                              type="button"
-                              onClick={() => {
-                                setFormData({...formData, assigned_to: c._id});
-                                setAiCandidates([]);
-                              }}
-                              className="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded mt-1 hover:bg-indigo-700"
-                            >
-                              Chọn
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Điểm/sản phẩm</label>
+                  <input
+                    type="number" min={0} max={100} disabled={!canEdit}
+                    value={form.kpi_point}
+                    onChange={e => setForm({ ...form, kpi_point: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">SL được giao</label>
+                  <input
+                    type="number" min={0} disabled={!canEdit}
+                    value={form.quantity_assigned}
+                    onChange={e => setForm({ ...form, quantity_assigned: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">SL hoàn thành</label>
+                  <input
+                    type="number" min={0}
+                    value={form.quantity_completed}
+                    onChange={e => setForm({ ...form, quantity_completed: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hạn chót (Deadline)</label>
-                  <input required type="date" value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cán bộ thực hiện</label>
+                  <select
+                    disabled={!canEdit}
+                    value={form.assigned_to}
+                    onChange={e => setForm({ ...form, assigned_to: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                  >
+                    <option value="">— Chưa giao —</option>
+                    {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hạn hoàn thành</label>
+                  <input
+                    type="date" disabled={!canEdit}
+                    value={form.deadline}
+                    onChange={e => setForm({ ...form, deadline: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
-                  <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none">
-                    <option value="todo">Cần làm</option>
-                    <option value="in_progress">Đang làm</option>
-                    <option value="review">Chờ duyệt</option>
-                    <option value="done">Hoàn thành</option>
+                  <select
+                    value={form.status}
+                    onChange={e => setForm({ ...form, status: e.target.value as TaskStatus })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  >
+                    {Object.entries(TASK_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
               </div>
-            </form>
-          )}
 
-          {/* TAB: SUBTASKS */}
-          {activeTab === 'subtasks' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex-1 bg-gray-200 rounded-full h-2.5">
-                  <div className="bg-blue-600 h-2.5 rounded-full transition-all" style={{ width: `${progressPercent}%` }}></div>
+              {/* Ảnh hưởng tới điểm KPI */}
+              {task && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm">
+                  <p className="font-medium text-blue-800 mb-2">Ảnh hưởng tới điểm KPI của kỳ</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-blue-700">
+                    <p>Điểm được giao:</p><p className="font-semibold">{assignedPoints}</p>
+                    <p>Điểm số lượng hoàn thành (A):</p><p className="font-semibold">{completedPoints}</p>
+                    <p>Đã chỉnh sửa {task.revision_count} lần → chất lượng (B):</p>
+                    <p className="font-semibold">{(QUALITY_PERCENT[qTier] * 100).toFixed(0)}% → {(completedPoints * QUALITY_PERCENT[qTier]).toFixed(1)} điểm</p>
+                    <p>Đã nhắc nhở {task.reminder_count} lần → tiến độ (C):</p>
+                    <p className="font-semibold">{(TIMELINE_PERCENT[tTier] * 100).toFixed(0)}% → {(completedPoints * TIMELINE_PERCENT[tTier]).toFixed(1)} điểm</p>
+                  </div>
                 </div>
-                <span className="text-sm font-medium text-gray-600">{progressPercent}%</span>
-              </div>
-              
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={newSubtask} 
-                  onChange={e => setNewSubtask(e.target.value)} 
-                  onKeyPress={e => e.key === 'Enter' && handleAddSubtask()}
-                  placeholder="Nhập tên việc nhỏ cần làm..." 
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg outline-none text-sm"
-                />
-                <button onClick={handleAddSubtask} className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-semibold">Thêm</button>
-              </div>
+              )}
 
-              <div className="space-y-2 mt-4">
-                {formData.subtasks.map((st: any) => (
-                  <div key={st.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg bg-gray-50 hover:bg-white transition-colors">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={st.is_completed} onChange={() => toggleSubtask(st.id)} className="w-5 h-5 text-blue-600 rounded" />
-                      <span className={`text-sm ${st.is_completed ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>{st.title}</span>
-                    </label>
-                    <button onClick={() => removeSubtask(st.id)} className="text-gray-400 hover:text-red-500">
-                      <X size={16} />
-                    </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                  Đóng
+                </button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                  {task ? 'Lưu thay đổi' : 'Giao nhiệm vụ'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-3 max-h-72 overflow-y-auto">
+                {comments.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-6">Chưa có ý kiến trao đổi.</p>
+                ) : comments.map(c => (
+                  <div key={c._id} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                    <div className="flex justify-between items-baseline mb-1">
+                      <p className="text-sm font-medium text-gray-800">{c.user_name || 'Cán bộ'}</p>
+                      <p className="text-xs text-gray-400">{new Date(c.created_at).toLocaleString('vi-VN')}</p>
+                    </div>
+                    <p className="text-sm text-gray-700">{c.content}</p>
                   </div>
                 ))}
-                {formData.subtasks.length === 0 && (
-                  <div className="text-center py-8 text-gray-400 text-sm">Chưa có sub-tasks nào.</div>
-                )}
               </div>
-            </div>
-          )}
-
-          {/* TAB: COMMENTS */}
-          {activeTab === 'comments' && (
-            <div className="flex flex-col h-[400px]">
-              <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
-                {comments.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400 text-sm">Chưa có bình luận nào. Bắt đầu thảo luận nhé!</div>
-                ) : (
-                  comments.map(c => (
-                    <div key={c._id} className="flex flex-col">
-                      <div className="flex items-baseline gap-2 mb-1">
-                        <span className="font-semibold text-gray-800 text-sm">{c.user_name}</span>
-                        <span className="text-xs text-gray-400">{format(new Date(c.created_at), 'dd/MM HH:mm')}</span>
-                      </div>
-                      <div className="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-tl-sm w-fit max-w-[85%] text-sm text-gray-800">
-                        {c.content}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="shrink-0 flex items-center gap-2 border-t pt-4">
-                <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors">
-                  <Paperclip size={20} />
-                </button>
-                <input 
-                  type="text" 
+              <div className="flex gap-2">
+                <input
                   value={newComment}
                   onChange={e => setNewComment(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && handlePostComment()}
-                  placeholder="Viết bình luận..." 
-                  className="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-0 rounded-full px-4 py-2 text-sm outline-none transition-colors border"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(); } }}
+                  placeholder="Nhập ý kiến trao đổi..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 />
-                <button onClick={handlePostComment} className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
-                  <Send size={18} className="ml-0.5" />
+                <button onClick={handleAddComment} className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <Send size={17} />
                 </button>
               </div>
             </div>
           )}
-
         </div>
-
-        {/* Footer (only visible in Details/Subtasks tab to allow saving) */}
-        {activeTab !== 'comments' && (
-          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between shrink-0 rounded-b-xl">
-            {task && (
-              <button type="button" onClick={() => onDelete(task._id)} className="text-red-600 hover:text-red-800 text-sm font-semibold px-3 py-2">
-                Xóa công việc
-              </button>
-            )}
-            {!task && <div></div>}
-            <div className="flex gap-3">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-semibold shadow-sm">
-                Hủy
-              </button>
-              <button type="submit" form="task-form" className="px-5 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold shadow-sm shadow-blue-200">
-                Lưu thay đổi
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

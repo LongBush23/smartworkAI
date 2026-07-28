@@ -104,6 +104,45 @@ export const COMPLEXITY_GROUP_LABELS: Record<number, string> = {
   3: 'Nhóm 3 (70 – 100 điểm)',
 };
 
+// ===== Mức điểm chất lượng (B) và tiến độ (C) =====
+
+export type QualityTier = 'excellent' | 'good' | 'fair_1' | 'fair_2_4' | 'poor_5_6' | 'fail_7';
+export type TimelineTier = 'ahead' | 'on_time' | 'late_1' | 'late_2' | 'late_3' | 'fail_4';
+
+export const QUALITY_PERCENT: Record<QualityTier, number> = {
+  excellent: 1.20, good: 1.00, fair_1: 0.75, fair_2_4: 0.50, poor_5_6: 0.25, fail_7: 0,
+};
+
+export const TIMELINE_PERCENT: Record<TimelineTier, number> = {
+  ahead: 1.20, on_time: 1.00, late_1: 0.75, late_2: 0.50, late_3: 0.25, fail_4: 0,
+};
+
+/**
+ * Suy ra mức điểm chất lượng từ số lần phải hoàn thiện, chỉnh sửa.
+ * 0 lần → đảm bảo (100%); 1 lần → ≤75%; 2-4 lần → ≤50%;
+ * 5-6 lần → ≤25%; từ 7 lần → không tính điểm.
+ */
+export function qualityTierFromRevisions(revisionCount: number): QualityTier {
+  if (revisionCount <= 0) return 'good';
+  if (revisionCount === 1) return 'fair_1';
+  if (revisionCount <= 4) return 'fair_2_4';
+  if (revisionCount <= 6) return 'poor_5_6';
+  return 'fail_7';
+}
+
+/**
+ * Suy ra mức điểm tiến độ từ số lần bị nhắc nhở.
+ * 0 lần → đúng tiến độ (100%); 1 lần → ≤75%;
+ * 2 lần → ≤50%; 3 lần → ≤25%; từ 4 lần → không tính điểm.
+ */
+export function timelineTierFromReminders(reminderCount: number): TimelineTier {
+  if (reminderCount <= 0) return 'on_time';
+  if (reminderCount === 1) return 'late_1';
+  if (reminderCount === 2) return 'late_2';
+  if (reminderCount === 3) return 'late_3';
+  return 'fail_4';
+}
+
 export const kpiApi = {
   // Catalog endpoints
   getCatalogs: async (params?: { department_id?: string; period_year?: number }) => {
