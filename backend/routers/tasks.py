@@ -10,8 +10,31 @@ from typing import List, Optional
 
 router = APIRouter()
 
+# Giá trị trạng thái của dữ liệu cũ → trạng thái hiện hành.
+# Chuẩn hoá khi đọc để bản ghi cũ vẫn hiển thị được, không cần sửa dữ liệu.
+_LEGACY_STATUS = {
+    "todo": "assigned",
+    "doing": "in_progress",
+    "pending": "assigned",
+}
+
+# Sản phẩm công việc của dữ liệu cũ (trước đây lưu tên tiếng Việt tự do)
+_VALID_PRODUCTS = {
+    "cong_van", "bao_cao", "to_trinh", "thong_tu",
+    "quy_dinh", "ke_hoach", "de_an", "khac",
+}
+
+
 def fix_id(doc):
     doc["_id"] = str(doc["_id"])
+
+    status = doc.get("status")
+    if status in _LEGACY_STATUS:
+        doc["status"] = _LEGACY_STATUS[status]
+
+    if doc.get("product") not in _VALID_PRODUCTS:
+        doc["product"] = "khac"
+
     return doc
 
 @router.get("/", response_model=List[TaskResponse])

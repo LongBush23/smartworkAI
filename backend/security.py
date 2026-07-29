@@ -5,9 +5,8 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-import os
+from backend.config import SECRET_KEY
 
-SECRET_KEY = os.getenv("SECRET_KEY", "smartwork_super_secret_key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15 # 15 mins for testing, highly secure
 REFRESH_TOKEN_EXPIRE_DAYS = 7 # 7 days
