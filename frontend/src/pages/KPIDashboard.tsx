@@ -3,7 +3,7 @@ import { kpiApi } from '../lib/kpi-api';
 import type { KPIRankingItem } from '../lib/kpi-api';
 import { Target, Users, Activity, Medal, Star, AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { KPI_GROUP_LABELS, KPI_GROUP_COLORS } from '../lib/kpi-api';
+import { KPI_GROUP_LABELS, KPI_GROUP_COLORS, ROLE_LABELS } from '../lib/kpi-api';
 
 const KPIDashboard = () => {
   const [ranking, setRanking] = useState<KPIRankingItem[]>([]);
@@ -38,9 +38,9 @@ const KPIDashboard = () => {
   };
 
   const chartData = [
-    { name: 'Nhóm 1 – Đáp ứng tốt', count: groupStats.group_1, fill: '#10b981' },
-    { name: 'Nhóm 2 – Đáp ứng', count: groupStats.group_2, fill: '#3b82f6' },
-    { name: 'Nhóm 3 – Chưa đáp ứng', count: groupStats.group_3, fill: '#ef4444' }
+    { name: 'Nhóm 1', full: 'Nhóm 1 – Đáp ứng tốt', count: groupStats.group_1, fill: '#10b981' },
+    { name: 'Nhóm 2', full: 'Nhóm 2 – Đáp ứng', count: groupStats.group_2, fill: '#3b82f6' },
+    { name: 'Nhóm 3', full: 'Nhóm 3 – Chưa đáp ứng', count: groupStats.group_3, fill: '#ef4444' }
   ];
 
   return (
@@ -112,9 +112,15 @@ const KPIDashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
+                <XAxis dataKey="name" interval={0} />
                 <YAxis />
-                <Tooltip cursor={{ fill: '#f3f4f6' }} />
+                <Tooltip
+                  cursor={{ fill: '#f3f4f6' }}
+                  formatter={(v) => [`${v} lượt đánh giá`, 'Số lượng']}
+                  labelFormatter={(label) =>
+                    chartData.find(d => d.name === label)?.full ?? String(label)
+                  }
+                />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -142,7 +148,7 @@ const KPIDashboard = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-800">{user.target_name}</p>
-                      <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                      <p className="text-xs text-gray-500">{ROLE_LABELS[user.role ?? ''] ?? user.role}</p>
                     </div>
                   </div>
                   <div className="text-right">

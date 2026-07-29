@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { kpiApi } from '../lib/kpi-api';
 import type { KPIRankingItem } from '../lib/kpi-api';
 import { Award, FileBarChart, Filter } from 'lucide-react';
-import { KPI_GROUP_LABELS, KPI_GROUP_COLORS } from '../lib/kpi-api';
+import { KPI_GROUP_LABELS, KPI_GROUP_COLORS, ROLE_LABELS } from '../lib/kpi-api';
 
 const KPIResults = () => {
   const [ranking, setRanking] = useState<KPIRankingItem[]>([]);
@@ -101,7 +101,9 @@ const KPIResults = () => {
                   <tr key={idx} className="hover:bg-gray-50 transition-colors">
                     <td className="p-4">
                       <div className="font-medium text-gray-900">{item.target_name}</div>
-                      {item.role && <div className="text-xs text-gray-500 capitalize">{item.role}</div>}
+                      {item.role && (
+                        <div className="text-xs text-gray-500">{ROLE_LABELS[item.role] ?? item.role}</div>
+                      )}
                     </td>
                     <td className="p-4 text-center text-sm font-medium text-gray-700">{item.score_A ? (item.score_A * 100).toFixed(1) + '%' : '-'}</td>
                     <td className="p-4 text-center text-sm font-medium text-gray-700">{item.score_B ? (item.score_B * 100).toFixed(1) + '%' : '-'}</td>

@@ -97,6 +97,14 @@ export const KPI_GROUP_COLORS: Record<string, string> = {
   group_3: 'text-red-700 bg-red-100 border-red-200',
 };
 
+// Nhãn tiếng Việt cho thẩm quyền của cán bộ
+export const ROLE_LABELS: Record<string, string> = {
+  admin: 'Quản trị hệ thống',
+  director: 'Lãnh đạo đơn vị',
+  leader: 'Lãnh đạo, chỉ huy',
+  staff: 'Cán bộ, chiến sĩ',
+};
+
 // Nhóm độ phức tạp công việc theo thang 100 điểm
 export const COMPLEXITY_GROUP_LABELS: Record<number, string> = {
   1: 'Nhóm 1 (0 – dưới 50 điểm)',
