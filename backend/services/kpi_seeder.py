@@ -343,13 +343,18 @@ async def seed_kpi_data(
             "updated_at": now - timedelta(days=180),
         })
 
-    # Một danh mục bản nháp của năm sau để kiểm thử luồng phê duyệt
+    # Một danh mục bản nháp của năm sau để kiểm thử luồng phê duyệt.
+    # Cấp id riêng cho từng mục, không dùng lại id của danh mục đã duyệt.
+    draft_items = [
+        {**item, "id": f"draft_{item['id']}"}
+        for item in catalogs_by_dept[str(dept_ids[0])][:8]
+    ]
     catalog_docs.append({
         "department_id": str(dept_ids[0]),
         "period_year": now.year + 1,
         "name": f"(Dự thảo) Danh mục nhiệm vụ công tác theo KPI năm {now.year + 1} — {dept_names[0]}",
         "status": "draft",
-        "items": catalogs_by_dept[str(dept_ids[0])][:8],
+        "items": draft_items,
         "approved_by": None,
         "approved_at": None,
         "created_by": admin_id,

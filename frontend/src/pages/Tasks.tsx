@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Bell, FileEdit, Trash2, ListChecks, AlertTriangle } from 'lucide-react';
+import { Plus, Bell, FileEdit, Trash2, ListChecks, AlertTriangle, Lock, EyeOff } from 'lucide-react';
 import api from '../lib/api';
-import { taskApi, PRODUCT_LABELS, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '../lib/task-api';
+import {
+  taskApi, PRODUCT_LABELS, TASK_STATUS_LABELS, TASK_STATUS_COLORS,
+  TASK_TYPE_LABELS, TASK_TYPE_COLORS, CLASSIFICATION_LABELS, CLASSIFICATION_COLORS,
+} from '../lib/task-api';
 import type { Task } from '../lib/task-api';
-import { qualityTierFromRevisions, timelineTierFromReminders, QUALITY_PERCENT, TIMELINE_PERCENT } from '../lib/kpi-api';
+import {
+  qualityTierFromRevisions, timelineTierFromReminders, QUALITY_PERCENT, TIMELINE_PERCENT,
+} from '../lib/kpi-api';
 import { TaskModal } from '../components/TaskModal';
 
 const Tasks = () => {
@@ -14,12 +19,12 @@ const Tasks = () => {
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<any>(null);
   const [modalTask, setModalTask] = useState<Task | null | undefined>(undefined);
-  const [statusFilter, setStatusFilter] = useState('');
 
+  const [filters, setFilters] = useState({ status: '', task_type: '', classification: '' });
   const now = new Date();
   const [period, setPeriod] = useState({ month: now.getMonth() + 1, year: now.getFullYear() });
 
-  useEffect(() => { fetchData(); }, [period.month, period.year, statusFilter]);
+  useEffect(() => { fetchData(); }, [period.month, period.year, filters.status, filters.task_type, filters.classification]);
 
   const fetchData = async () => {
     try {
@@ -30,7 +35,9 @@ const Tasks = () => {
       const taskList = await taskApi.list({
         period_month: period.month,
         period_year: period.year,
-        status: statusFilter || undefined,
+        status: filters.status || undefined,
+        task_type: filters.task_type || undefined,
+        classification: filters.classification || undefined,
       });
       setTasks(taskList);
 
@@ -40,7 +47,14 @@ const Tasks = () => {
           api.get('/kpi/catalog', { params: { department_id: meRes.data.department_id } }).catch(() => ({ data: [] })),
         ]);
         setUsers(empRes.data);
-        setCatalogItems((catRes.data || []).flatMap((c: any) => c.items || []));
+        // Gộp mục của mọi danh mục, loại trùng id để tránh trùng khoá khi hiển thị
+        const merged = new Map<string, any>();
+        for (const c of catRes.data || []) {
+          for (const item of c.items || []) {
+            if (!merged.has(item.id)) merged.set(item.id, item);
+          }
+        }
+        setCatalogItems([...merged.values()]);
       }
     } catch (error) {
       console.error('Không tải được danh sách nhiệm vụ', error);
@@ -78,7 +92,9 @@ const Tasks = () => {
       }
       setModalTask(undefined);
       fetchData();
-    } catch { toast.error('Không lưu được nhiệm vụ'); }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'Không lưu được nhiệm vụ');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -91,7 +107,7 @@ const Tasks = () => {
     } catch { toast.error('Không xoá được nhiệm vụ'); }
   };
 
-  // Tổng hợp điểm A/B/C dự kiến của kỳ theo công thức tài liệu
+  // Tổng hợp A/B/C dự kiến của kỳ theo công thức 20-HD/ĐUCA
   const totals = tasks.reduce((acc, t) => {
     acc.assigned += t.kpi_point * (t.quantity_assigned || 1);
     if (t.status === 'done') {
@@ -104,165 +120,206 @@ const Tasks = () => {
   }, { assigned: 0, completed: 0, quality: 0, timeline: 0 });
 
   const pct = (v: number) => totals.assigned > 0 ? (v / totals.assigned * 100).toFixed(1) + '%' : '–';
+  const classifiedCount = tasks.filter(t => t.classification !== 'thuong').length;
+
+  const selectClass = 'px-2.5 py-1.5 border border-navy-200 rounded-sm text-xs bg-white text-navy-700';
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
+    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600" /></div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-3 justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <ListChecks className="h-6 w-6 text-blue-600" />
-          Nhiệm vụ công tác
-        </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-          >
-            <option value="">Tất cả trạng thái</option>
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3 justify-between items-start">
+        <div>
+          <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2">
+            <ListChecks className="h-5 w-5 text-navy-600" /> Nhiệm vụ công tác
+          </h1>
+          <p className="text-xs text-navy-500 mt-0.5">
+            Kỳ tháng {period.month}/{period.year} · {tasks.length} nhiệm vụ
+            {classifiedCount > 0 && (
+              <span className="text-crimson-700"> · {classifiedCount} có độ mật</span>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <select value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })} className={selectClass}>
+            <option value="">Mọi trạng thái</option>
             {Object.entries(TASK_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <select
-            value={period.month}
-            onChange={e => setPeriod({ ...period, month: parseInt(e.target.value) })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-          >
+          <select value={filters.task_type} onChange={e => setFilters({ ...filters, task_type: e.target.value })} className={selectClass}>
+            <option value="">Mọi loại</option>
+            {Object.entries(TASK_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <select value={filters.classification} onChange={e => setFilters({ ...filters, classification: e.target.value })} className={selectClass}>
+            <option value="">Mọi độ mật</option>
+            {Object.entries(CLASSIFICATION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <select value={period.month} onChange={e => setPeriod({ ...period, month: parseInt(e.target.value) })} className={selectClass}>
             {[...Array(12)].map((_, i) => <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>)}
           </select>
-          <select
-            value={period.year}
-            onChange={e => setPeriod({ ...period, year: parseInt(e.target.value) })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-          >
+          <select value={period.year} onChange={e => setPeriod({ ...period, year: parseInt(e.target.value) })} className={selectClass}>
             {[...Array(5)].map((_, i) => {
               const y = now.getFullYear() - 2 + i;
-              return <option key={y} value={y}>Năm {y}</option>;
+              return <option key={y} value={y}>{y}</option>;
             })}
           </select>
           {isLeaderPlus && (
             <button
               onClick={() => setModalTask(null)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 text-white rounded-sm hover:bg-navy-800 text-xs font-medium"
             >
-              <Plus size={18} /> Giao nhiệm vụ
+              <Plus size={15} /> Giao nhiệm vụ
             </button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-xs text-gray-500">Tổng điểm được giao</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{totals.assigned}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-xs text-gray-500">Điểm số lượng (A)</p>
-          <p className="text-2xl font-bold text-blue-600 mt-1">{pct(totals.completed)}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-xs text-gray-500">Điểm chất lượng (B)</p>
-          <p className="text-2xl font-bold text-indigo-600 mt-1">{pct(totals.quality)}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-xs text-gray-500">Điểm tiến độ (C)</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{pct(totals.timeline)}</p>
-        </div>
+      {/* Tổng hợp điểm A/B/C */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: 'Tổng điểm được giao', value: totals.assigned.toString(), color: 'text-navy-900' },
+          { label: 'Điểm số lượng (A)', value: pct(totals.completed), color: 'text-navy-700' },
+          { label: 'Điểm chất lượng (B)', value: pct(totals.quality), color: 'text-gold-600' },
+          { label: 'Điểm tiến độ (C)', value: pct(totals.timeline), color: 'text-emerald-700' },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-navy-200 rounded-sm p-3">
+            <p className="section-label">{s.label}</p>
+            <p className={`text-2xl font-bold tabular mt-0.5 ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-navy-200 rounded-sm overflow-hidden">
         {tasks.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            Chưa có nhiệm vụ công tác nào trong tháng {period.month}/{period.year}.
+          <div className="p-12 text-center text-navy-400 text-sm">
+            Không có nhiệm vụ nào khớp điều kiện lọc trong kỳ này.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-gray-600">
-                  <th className="p-3 font-medium">Nội dung nhiệm vụ</th>
-                  <th className="p-3 font-medium">Sản phẩm</th>
-                  <th className="p-3 font-medium text-center">Điểm</th>
-                  <th className="p-3 font-medium text-center">SL giao / HT</th>
-                  <th className="p-3 font-medium">Cán bộ thực hiện</th>
-                  <th className="p-3 font-medium text-center">Hạn hoàn thành</th>
-                  <th className="p-3 font-medium text-center">Sửa (B)</th>
-                  <th className="p-3 font-medium text-center">Nhắc (C)</th>
-                  <th className="p-3 font-medium text-center">Trạng thái</th>
-                  <th className="p-3 font-medium text-center">Thao tác</th>
+                <tr className="bg-navy-50 border-b border-navy-200 text-navy-600 text-xs">
+                  <th className="px-3 py-2 font-medium">Mã hiệu</th>
+                  <th className="px-3 py-2 font-medium">Nội dung nhiệm vụ</th>
+                  <th className="px-3 py-2 font-medium">Loại</th>
+                  <th className="px-3 py-2 font-medium">Sản phẩm</th>
+                  <th className="px-3 py-2 font-medium text-center">Điểm</th>
+                  <th className="px-3 py-2 font-medium text-center">SL</th>
+                  <th className="px-3 py-2 font-medium">Cán bộ thực hiện</th>
+                  <th className="px-3 py-2 font-medium text-center">Hạn</th>
+                  <th className="px-3 py-2 font-medium text-center">Sửa</th>
+                  <th className="px-3 py-2 font-medium text-center">Nhắc</th>
+                  <th className="px-3 py-2 font-medium text-center">Trạng thái</th>
+                  <th className="px-3 py-2 font-medium text-center">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-navy-100">
                 {tasks.map(t => {
                   const overdue = t.status !== 'done' && new Date(t.deadline) < now;
+                  const classified = t.classification !== 'thuong';
+                  const daysLeft = Math.ceil((+new Date(t.deadline) - +now) / 864e5);
                   return (
-                    <tr key={t._id} className="hover:bg-gray-50">
-                      <td className="p-3">
-                        <p className="font-medium text-gray-800">{t.title}</p>
-                        {t.description && <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{t.description}</p>}
+                    <tr key={t._id} className={`hover:bg-navy-50/60 ${classified ? 'bg-crimson-50/40' : ''}`}>
+                      <td className="px-3 py-2 font-mono text-[11px] text-navy-600 whitespace-nowrap">
+                        {t.code || '—'}
                       </td>
-                      <td className="p-3 text-gray-600">{PRODUCT_LABELS[t.product] ?? t.product}</td>
-                      <td className="p-3 text-center font-semibold text-blue-700">{t.kpi_point}</td>
-                      <td className="p-3 text-center text-gray-700">
-                        {t.quantity_assigned} / <span className="font-medium">{t.quantity_completed}</span>
+                      <td className="px-3 py-2 max-w-xs">
+                        <div className="flex items-start gap-1.5">
+                          {classified && <Lock size={13} className="text-crimson-600 shrink-0 mt-0.5" />}
+                          <div className="min-w-0">
+                            <p className={`truncate font-medium ${t.is_redacted ? 'italic text-navy-400' : 'text-navy-800'}`}>
+                              {t.title}
+                            </p>
+                            {classified ? (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className={`px-1.5 py-0 text-[9px] font-bold tracking-wider rounded-sm border ${CLASSIFICATION_COLORS[t.classification]}`}>
+                                  {CLASSIFICATION_LABELS[t.classification]}
+                                </span>
+                                {t.is_redacted && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] text-crimson-600">
+                                    <EyeOff size={9} /> chưa đủ cấp độ tiếp cận
+                                  </span>
+                                )}
+                                {t.file_reference && (
+                                  <span className="text-[9px] text-navy-500 font-mono">{t.file_reference}</span>
+                                )}
+                              </div>
+                            ) : t.description && (
+                              <p className="text-[11px] text-navy-400 truncate">{t.description}</p>
+                            )}
+                          </div>
+                        </div>
                       </td>
-                      <td className="p-3 text-gray-700">{t.assignee_name || <span className="text-gray-400">Chưa giao</span>}</td>
-                      <td className={`p-3 text-center ${overdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                        <span className="inline-flex items-center gap-1">
-                          {overdue && <AlertTriangle size={13} />}
-                          {new Date(t.deadline).toLocaleDateString('vi-VN')}
+                      <td className="px-3 py-2">
+                        <span className={`px-1.5 py-0.5 text-[10px] rounded-sm border whitespace-nowrap ${TASK_TYPE_COLORS[t.task_type] ?? ''}`}>
+                          {TASK_TYPE_LABELS[t.task_type] ?? t.task_type}
                         </span>
                       </td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${t.revision_count === 0 ? 'bg-green-50 text-green-700' : t.revision_count <= 4 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
-                          {t.revision_count} lần
+                      <td className="px-3 py-2 text-navy-600 text-xs whitespace-nowrap">
+                        {PRODUCT_LABELS[t.product] ?? t.product}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span className="font-semibold text-navy-800 tabular">{t.kpi_point}</span>
+                        {t.complexity_group && (
+                          <span className="block text-[9px] text-navy-400">N{t.complexity_group}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center tabular text-xs text-navy-700 whitespace-nowrap">
+                        {t.quantity_completed}/{t.quantity_assigned}
+                      </td>
+                      <td className="px-3 py-2 text-navy-700 text-xs truncate max-w-32">
+                        {t.assignee_name || <span className="text-navy-300">Chưa giao</span>}
+                        {t.co_assignees?.length > 0 && (
+                          <span className="block text-[10px] text-navy-400">+{t.co_assignees.length} phối hợp</span>
+                        )}
+                      </td>
+                      <td className={`px-3 py-2 text-center text-xs tabular whitespace-nowrap ${overdue ? 'text-crimson-700 font-medium' : 'text-navy-600'}`}>
+                        {overdue && <AlertTriangle size={11} className="inline mr-0.5" />}
+                        {new Date(t.deadline).toLocaleDateString('vi-VN')}
+                        <span className="block text-[9px] text-navy-400">
+                          {t.status === 'done' ? 'đã xong'
+                            : overdue ? `trễ ${Math.abs(daysLeft)} ngày`
+                            : `còn ${daysLeft} ngày`}
                         </span>
                       </td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${t.reminder_count === 0 ? 'bg-green-50 text-green-700' : t.reminder_count <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
-                          {t.reminder_count} lần
+                      <td className="px-3 py-2 text-center tabular">
+                        <span className={t.revision_count === 0 ? 'text-navy-300' : t.revision_count <= 4 ? 'text-gold-700 font-medium' : 'text-crimson-700 font-medium'}>
+                          {t.revision_count}
                         </span>
                       </td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${TASK_STATUS_COLORS[t.status]}`}>
+                      <td className="px-3 py-2 text-center tabular">
+                        <span className={t.reminder_count === 0 ? 'text-navy-300' : t.reminder_count <= 2 ? 'text-gold-700 font-medium' : 'text-crimson-700 font-medium'}>
+                          {t.reminder_count}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`px-2 py-0.5 text-[11px] rounded-sm whitespace-nowrap ${TASK_STATUS_COLORS[t.status]}`}>
                           {TASK_STATUS_LABELS[t.status]}
                         </span>
                       </td>
-                      <td className="p-3">
-                        <div className="flex items-center justify-center gap-1">
-                          {isLeaderPlus && t.status !== 'done' && (
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-center gap-0.5">
+                          {isLeaderPlus && t.status !== 'done' && !t.is_redacted && (
                             <>
-                              <button
-                                onClick={() => handleRemind(t)}
-                                title="Nhắc nhở tiến độ"
-                                className="p-1.5 text-amber-600 hover:bg-amber-50 rounded"
-                              >
-                                <Bell size={16} />
+                              <button onClick={() => handleRemind(t)} title="Nhắc nhở tiến độ"
+                                className="p-1 text-gold-600 hover:bg-gold-50 rounded-sm">
+                                <Bell size={14} />
                               </button>
-                              <button
-                                onClick={() => handleRevision(t)}
-                                title="Yêu cầu hoàn thiện, chỉnh sửa"
-                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"
-                              >
-                                <FileEdit size={16} />
+                              <button onClick={() => handleRevision(t)} title="Yêu cầu hoàn thiện, chỉnh sửa"
+                                className="p-1 text-navy-600 hover:bg-navy-50 rounded-sm">
+                                <FileEdit size={14} />
                               </button>
                             </>
                           )}
-                          <button
-                            onClick={() => setModalTask(t)}
-                            className="px-2 py-1 text-xs text-blue-700 hover:bg-blue-50 rounded font-medium"
-                          >
+                          <button onClick={() => setModalTask(t)}
+                            className="px-1.5 py-0.5 text-[11px] text-navy-700 hover:bg-navy-100 rounded-sm font-medium">
                             Chi tiết
                           </button>
-                          {isLeaderPlus && (
-                            <button
-                              onClick={() => handleDelete(t._id)}
-                              title="Xoá nhiệm vụ"
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 size={16} />
+                          {isLeaderPlus && !t.is_redacted && (
+                            <button onClick={() => handleDelete(t._id)} title="Xoá nhiệm vụ"
+                              className="p-1 text-crimson-500 hover:bg-crimson-50 rounded-sm">
+                              <Trash2 size={14} />
                             </button>
                           )}
                         </div>
@@ -276,12 +333,24 @@ const Tasks = () => {
         )}
       </div>
 
+      {classifiedCount > 0 && (
+        <div className="flex items-start gap-2 text-[11px] text-navy-500 bg-crimson-50 border border-crimson-200 rounded-sm px-3 py-2">
+          <Lock size={13} className="text-crimson-600 shrink-0 mt-0.5" />
+          <p>
+            Nhiệm vụ có độ mật chỉ lưu <strong>mã hiệu, tên gọi quy ước, điểm và thời hạn</strong> trong hệ thống.
+            Nội dung nghiệp vụ được quản lý theo chế độ mật tại đơn vị theo số hiệu hồ sơ gốc.
+            Mọi lượt truy cập đều được ghi nhật ký.
+          </p>
+        </div>
+      )}
+
       {modalTask !== undefined && (
         <TaskModal
           task={modalTask}
           users={users}
           catalogItems={catalogItems}
           canEdit={isLeaderPlus}
+          currentUser={me}
           onClose={() => setModalTask(undefined)}
           onSave={handleSave}
         />

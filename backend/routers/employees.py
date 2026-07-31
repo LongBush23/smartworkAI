@@ -2,10 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.database import db
 from backend.security import get_current_user
 from backend.dependencies import require_director_or_above
-from backend.models.schemas import UserCreate, UserUpdate, UserResponse
+from backend.models.schemas import (
+    UserCreate, UserUpdate, UserResponse, EmployeeProfile, WorkloadStatusEnum,
+)
+from backend.models.security_policy import rank_of
 from backend.security import get_password_hash
 from backend.services.audit_service import log_action
 from bson import ObjectId
+from datetime import datetime
 from typing import List, Optional
 
 router = APIRouter()
@@ -13,6 +17,130 @@ router = APIRouter()
 def fix_id(doc):
     doc["_id"] = str(doc["_id"])
     return doc
+
+
+def workload_status(percent: float) -> WorkloadStatusEnum:
+    """Tình trạng sẵn sàng nhận nhiệm vụ theo tỷ lệ điểm đang đảm nhận / định mức."""
+    if percent < 50:
+        return WorkloadStatusEnum.SAN_SANG
+    if percent < 85:
+        return WorkloadStatusEnum.DANG_LAM
+    if percent <= 100:
+        return WorkloadStatusEnum.GAN_DAY
+    return WorkloadStatusEnum.QUA_TAI
+
+
+@router.get("/{employee_id}/profile", response_model=EmployeeProfile)
+async def get_employee_profile(
+    employee_id: str,
+    period_month: Optional[int] = None,
+    period_year: Optional[int] = None,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Hồ sơ công tác của một cán bộ trong kỳ: tình trạng tải việc, thống kê
+    nhiệm vụ, số lần chỉnh sửa/nhắc nhở và diễn biến điểm KPI.
+    """
+    user = await db.users.find_one({"_id": ObjectId(employee_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy cán bộ")
+
+    now = datetime.utcnow()
+    month = period_month or now.month
+    year = period_year or now.year
+
+    dept_name = None
+    if user.get("department_id"):
+        dept = await db.departments.find_one({"_id": ObjectId(user["department_id"])})
+        dept_name = dept.get("name") if dept else None
+
+    tasks = await db.tasks.find({
+        "assigned_to": employee_id,
+        "period_month": month,
+        "period_year": year,
+    }).to_list(500)
+
+    open_points = 0
+    points_assigned = 0
+    points_completed = 0
+    completed = in_progress = overdue = classified = 0
+
+    for t in tasks:
+        point = t.get("kpi_point", 0)
+        qty = t.get("quantity_assigned", 1) or 1
+        assigned_points = point * qty
+        points_assigned += assigned_points
+
+        if rank_of(t.get("classification")) > 0:
+            classified += 1
+
+        if t.get("status") == "done":
+            completed += 1
+            points_completed += point * (t.get("quantity_completed", 0) or 0)
+        else:
+            in_progress += 1
+            open_points += assigned_points
+            deadline = t.get("deadline")
+            if deadline and deadline < now:
+                overdue += 1
+
+    capacity = int(user.get("capacity_points", 300) or 300)
+    percent = round(open_points / capacity * 100, 1) if capacity else 0.0
+
+    # Diễn biến KPI trong năm
+    evaluations = await db.kpi_evaluations.find({
+        "target_id": employee_id,
+        "evaluation_type": "individual",
+        "period_type": "monthly",
+        "period_year": year,
+        "overall_status": "approved",
+    }).to_list(24)
+    evaluations.sort(key=lambda e: e.get("period_month") or 0)
+
+    history = [
+        {
+            "period_month": e.get("period_month"),
+            "kpi_score": (e.get("approval") or {}).get("kpi_score"),
+            "kpi_group": (e.get("approval") or {}).get("kpi_group"),
+        }
+        for e in evaluations
+        if (e.get("approval") or {}).get("kpi_score") is not None
+    ]
+    scores = [h["kpi_score"] for h in history]
+
+    return {
+        "id": str(user["_id"]),
+        "name": user.get("name", ""),
+        "username": user.get("username", ""),
+        "email": user.get("email"),
+        "role": user.get("role", "staff"),
+        "position": user.get("position"),
+        "rank": user.get("rank"),
+        "service_number": user.get("service_number"),
+        "clearance_level": int(user.get("clearance_level", 0) or 0),
+        "department_id": user.get("department_id"),
+        "department_name": dept_name,
+        "is_commander": user.get("role") in ("leader", "director"),
+        "period_month": month,
+        "period_year": year,
+        "capacity_points": capacity,
+        "open_points": open_points,
+        "workload_percent": percent,
+        "workload_status": workload_status(percent),
+        "tasks_assigned": len(tasks),
+        "tasks_completed": completed,
+        "tasks_in_progress": in_progress,
+        "tasks_overdue": overdue,
+        "points_assigned": points_assigned,
+        "points_completed": points_completed,
+        "classified_tasks": classified,
+        "total_revisions": sum(t.get("revision_count", 0) for t in tasks),
+        "total_reminders": sum(t.get("reminder_count", 0) for t in tasks),
+        "latest_kpi": scores[-1] if scores else None,
+        "latest_kpi_group": history[-1]["kpi_group"] if history else None,
+        "yearly_avg_kpi": round(sum(scores) / len(scores), 2) if scores else None,
+        "kpi_history": history,
+    }
 
 @router.get("/", response_model=List[UserResponse])
 async def get_employees(role: Optional[str] = None, current_user: dict = Depends(get_current_user)):

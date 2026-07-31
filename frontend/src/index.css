@@ -1,18 +1,88 @@
 @import "tailwindcss";
 
-/* Custom variables if needed later */
-:root {
-  --primary: #4F46E5;
+/* ============================================================
+   Bảng màu — Hệ thống Tính điểm KPI trong Công an nhân dân
+   Navy trang nghiêm làm chủ đạo · đỏ đô cho cảnh báo và độ mật
+   · vàng đồng cho thành tích.
+   ============================================================ */
+@theme {
+  /* Navy — màu chủ đạo */
+  --color-navy-50:  #f2f5f9;
+  --color-navy-100: #e3eaf2;
+  --color-navy-200: #c6d4e4;
+  --color-navy-300: #94aecb;
+  --color-navy-400: #5c7fa8;
+  --color-navy-500: #3a5f88;
+  --color-navy-600: #2a4870;
+  --color-navy-700: #1e3a5f;
+  --color-navy-800: #172c48;
+  --color-navy-900: #101f33;
+
+  /* Đỏ đô — cảnh báo, quá hạn, độ mật cao */
+  --color-crimson-50:  #fdf3f3;
+  --color-crimson-100: #fbe4e4;
+  --color-crimson-200: #f6cccc;
+  --color-crimson-300: #eda3a3;
+  --color-crimson-400: #df6f6f;
+  --color-crimson-500: #c94444;
+  --color-crimson-600: #a82c2c;
+  --color-crimson-700: #8b1a1a;
+  --color-crimson-800: #741818;
+  --color-crimson-900: #5c1414;
+
+  /* Vàng đồng — thành tích, xếp loại tốt */
+  --color-gold-50:  #fdf9ed;
+  --color-gold-100: #f9f0d2;
+  --color-gold-200: #f2e0a5;
+  --color-gold-300: #e7c86b;
+  --color-gold-400: #d9ad3c;
+  --color-gold-500: #c2921f;
+  --color-gold-600: #a37817;
+  --color-gold-700: #7f5d16;
+
+  /* Bo góc nhỏ — cảm giác văn bản hành chính, ít bo tròn */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+/* Nền xám lạnh để thẻ trắng nổi rõ, tăng độ tương phản khi đọc bảng */
+body {
+  background-color: #eef1f5;
+  color: var(--color-navy-900);
+  -webkit-font-smoothing: antialiased;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+
+/* Bảng số liệu: chữ số đều cột, dễ đối chiếu */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
+
+/* Nhãn mục nhỏ kiểu văn bản hành chính */
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-navy-400);
+}
+
+/* Sọc chéo cho vùng thông tin bị che vì chưa đủ cấp độ tiếp cận */
+.classified-hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-crimson-50),
+    var(--color-crimson-50) 6px,
+    var(--color-crimson-100) 6px,
+    var(--color-crimson-100) 12px
+  );
+}
+
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
+  background-color: var(--color-navy-200);
   border-radius: 10px;
 }
 
@@ -25,4 +95,3 @@
 .animate-shake {
   animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
-

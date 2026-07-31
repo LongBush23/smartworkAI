@@ -14,6 +14,8 @@ import KPICatalogPage from './pages/KPICatalog';
 import KPIEvaluate from './pages/KPIEvaluate';
 import KPIResults from './pages/KPIResults';
 import KPICriteria from './pages/KPICriteria';
+import Organization from './pages/Organization';
+import EmployeeDetail from './pages/EmployeeDetail';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
@@ -29,7 +31,9 @@ function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="tasks" element={<Tasks />} />
+              <Route path="organization" element={<Organization />} />
               <Route path="employees" element={<Employees />} />
+              <Route path="employees/:id" element={<EmployeeDetail />} />
               <Route path="profile" element={<Profile />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="audit-logs" element={<AuditLogs />} />

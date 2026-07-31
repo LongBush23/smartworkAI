@@ -3,9 +3,13 @@ from backend.database import db
 from backend.security import get_current_user
 from backend.dependencies import require_leader_or_above
 from backend.models.schemas import TaskCreate, TaskUpdate, TaskResponse, NotificationType
+from backend.models.security_policy import (
+    redact, can_access, assert_no_classified_content, rank_of, CLASSIFICATION_LABELS,
+)
 from backend.services.notification_service import send_notification
 from backend.services.audit_service import log_action
 from bson import ObjectId
+from datetime import datetime
 from typing import List, Optional
 
 router = APIRouter()
@@ -37,26 +41,50 @@ def fix_id(doc):
 
     return doc
 
+
+async def next_task_code(period_year: int, period_month: int) -> str:
+    """Sinh mã hiệu nhiệm vụ dạng NV-2026-07-0042 theo từng kỳ."""
+    prefix = f"NV-{period_year}-{period_month:02d}-"
+    count = await db.tasks.count_documents({"code": {"$regex": f"^{prefix}"}})
+    return f"{prefix}{count + 1:04d}"
+
 @router.get("/", response_model=List[TaskResponse])
 async def get_tasks(
     assignee_id: Optional[str] = None,
     department_id: Optional[str] = None,
     status: Optional[str] = None,
+    task_type: Optional[str] = None,
+    classification: Optional[str] = None,
     period_month: Optional[int] = None,
     period_year: Optional[int] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Danh sách nhiệm vụ công tác. Cán bộ không giữ chức vụ chỉ thấy nhiệm vụ của mình."""
+    """
+    Danh sách nhiệm vụ công tác. Cán bộ không giữ chức vụ chỉ thấy nhiệm vụ của mình.
+
+    Nhiệm vụ có độ mật vượt cấp độ tiếp cận của người gọi sẽ được lược bỏ các
+    trường nhạy cảm NGAY TẠI MÁY CHỦ — không gửi về trình duyệt.
+    """
     match_query = {}
+    role = current_user.get("role", "staff")
+
     if assignee_id:
         match_query["assigned_to"] = assignee_id
-    elif current_user.get("role") == "staff":
+    elif role == "staff":
+        # Cán bộ không giữ chức vụ chỉ thấy nhiệm vụ của mình
         match_query["assigned_to"] = str(current_user["_id"])
 
     if department_id:
         match_query["department_id"] = department_id
+    elif role in ("leader", "director") and current_user.get("department_id"):
+        # Lãnh đạo, chỉ huy chỉ theo dõi nhiệm vụ trong đơn vị mình phụ trách
+        match_query["department_id"] = current_user["department_id"]
     if status:
         match_query["status"] = status
+    if task_type:
+        match_query["task_type"] = task_type
+    if classification:
+        match_query["classification"] = classification
     if period_month:
         match_query["period_month"] = period_month
     if period_year:
@@ -98,14 +126,54 @@ async def get_tasks(
 
     cursor = db.tasks.aggregate(pipeline)
     tasks = await cursor.to_list(length=500)
-    return [fix_id(t) for t in tasks]
+    return [redact(fix_id(t), current_user) for t in tasks]
+
+
+@router.get("/{task_id}", response_model=TaskResponse)
+async def get_task(task_id: str, current_user: dict = Depends(get_current_user)):
+    """Chi tiết một nhiệm vụ. Truy cập nhiệm vụ có độ mật đều được ghi nhật ký."""
+    doc = await db.tasks.find_one({"_id": ObjectId(task_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy nhiệm vụ công tác")
+
+    fix_id(doc)
+
+    if rank_of(doc.get("classification")) > 0:
+        allowed = can_access(current_user, doc)
+        await log_action(
+            current_user["_id"], current_user.get("name", ""),
+            "task.classified_access" if allowed else "task.classified_denied",
+            "task", task_id,
+            f"Độ mật: {CLASSIFICATION_LABELS.get(doc.get('classification'), '?')}"
+            f" · Mã hiệu: {doc.get('code', '-')}",
+        )
+
+    return redact(doc, current_user)
 
 @router.post("/", response_model=TaskResponse)
 async def create_task(task: TaskCreate, current_user: dict = Depends(require_leader_or_above)):
-    """Only Leader+ can create tasks."""
+    """Chỉ lãnh đạo, chỉ huy trở lên được giao nhiệm vụ."""
     task_dict = task.model_dump(exclude_unset=True, by_alias=True)
-    if "_id" in task_dict:
-        del task_dict["_id"]
+    task_dict.pop("_id", None)
+
+    # Nhiệm vụ có độ mật không được lưu nội dung tự do trong hệ thống
+    assert_no_classified_content(task_dict)
+
+    # Người giao chỉ được giao nhiệm vụ trong phạm vi cấp độ tiếp cận của mình
+    if rank_of(task_dict.get("classification")) > int(current_user.get("clearance_level", 0) or 0):
+        raise HTTPException(
+            status_code=403,
+            detail="Bạn không đủ cấp độ tiếp cận để giao nhiệm vụ ở độ mật này",
+        )
+
+    now = datetime.utcnow()
+    task_dict.setdefault("period_month", now.month)
+    task_dict.setdefault("period_year", now.year)
+    if not task_dict.get("code"):
+        task_dict["code"] = await next_task_code(task_dict["period_year"], task_dict["period_month"])
+    task_dict["assigned_by"] = str(current_user["_id"])
+    task_dict["assigned_at"] = now
+
     result = await db.tasks.insert_one(task_dict)
     task_dict["_id"] = str(result.inserted_id)
 
@@ -141,8 +209,17 @@ async def update_task(task_id: str, task: TaskUpdate, current_user: dict = Depen
             raise HTTPException(status_code=403, detail="Bạn chỉ có thể cập nhật nhiệm vụ được giao cho mình")
 
     update_data = task.model_dump(exclude_unset=True, by_alias=True)
-    if "_id" in update_data:
-        del update_data["_id"]
+    update_data.pop("_id", None)
+
+    # Kiểm tra theo độ mật SAU khi ghép: tránh lách bằng cách sửa từng trường
+    merged = {**existing_task, **update_data}
+    assert_no_classified_content(merged)
+
+    if not can_access(current_user, existing_task):
+        raise HTTPException(
+            status_code=403,
+            detail="Bạn không đủ cấp độ tiếp cận để sửa nhiệm vụ này",
+        )
 
     # Detect assignment change → notify
     old_assignee = existing_task.get("assigned_to")

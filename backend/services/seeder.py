@@ -9,17 +9,51 @@ from datetime import datetime, timedelta
 
 from backend.database import db
 from backend.security import get_password_hash
-from backend.services.kpi_seeder import seed_kpi_data, CATALOG_TEMPLATE
+from backend.models.security_policy import CLASSIFICATION_RANK
+from backend.services.kpi_seeder import seed_kpi_data
 
 SEED = 20260608
 
-# Đơn vị theo hệ lực lượng
-DEPARTMENTS = [
-    ("Văn phòng Bộ Công an", "Tham mưu tổng hợp; chủ trì xây dựng Khung Danh mục nhiệm vụ công tác theo KPI", "Tham mưu"),
-    ("Cục Tổ chức cán bộ", "Công tác tổ chức, cán bộ; theo dõi, chấm điểm KPI đối với cá nhân lãnh đạo, chỉ huy", "Tổ chức cán bộ"),
-    ("Cục Pháp chế và cải cách hành chính, tư pháp", "Xây dựng văn bản quy phạm pháp luật; cải cách hành chính", "Pháp chế"),
-    ("Phòng Cảnh sát điều tra tội phạm về trật tự xã hội", "Đấu tranh phòng, chống tội phạm về trật tự xã hội", "Cảnh sát hình sự"),
-    ("Phòng An ninh chính trị nội bộ", "Bảo vệ an ninh chính trị nội bộ", "An ninh"),
+# Cây cơ cấu tổ chức 3 cấp: Bộ → Cục / Công an tỉnh → Phòng
+# (tên, tên viết tắt, mô tả, hệ lực lượng, cấp, khoá đơn vị cha)
+ORG_TREE = [
+    ("Bộ Công an", "BCA",
+     "Cơ quan Bộ", "Cơ quan Bộ", "bo", None),
+
+    ("Văn phòng Bộ Công an", "VPB",
+     "Tham mưu tổng hợp; chủ trì xây dựng Khung Danh mục nhiệm vụ công tác theo KPI",
+     "Tham mưu", "cuc", "Bộ Công an"),
+    ("Cục Tổ chức cán bộ", "X01",
+     "Công tác tổ chức, cán bộ; tham mưu chấm điểm KPI đối với lãnh đạo, chỉ huy",
+     "Tổ chức cán bộ", "cuc", "Bộ Công an"),
+    ("Cục Pháp chế và cải cách hành chính, tư pháp", "V03",
+     "Xây dựng văn bản quy phạm pháp luật; cải cách hành chính, tư pháp",
+     "Pháp chế", "cuc", "Bộ Công an"),
+    ("Công an tỉnh Đắk Lắk", "CADL",
+     "Công an cấp tỉnh", "Công an địa phương", "cuc", "Bộ Công an"),
+
+    # Cấp Phòng — nơi bố trí cán bộ và chấm điểm KPI
+    ("Phòng Tham mưu tổng hợp", "VPB-P1",
+     "Tổng hợp, theo dõi, kiểm đếm công việc toàn lực lượng",
+     "Tham mưu", "phong", "Văn phòng Bộ Công an"),
+    ("Phòng Thư ký - Biên tập", "VPB-P2",
+     "Thư ký lãnh đạo Bộ; biên tập văn bản",
+     "Tham mưu", "phong", "Văn phòng Bộ Công an"),
+    ("Phòng Chính sách cán bộ", "X01-P1",
+     "Chính sách, chế độ đối với cán bộ, chiến sĩ",
+     "Tổ chức cán bộ", "phong", "Cục Tổ chức cán bộ"),
+    ("Phòng Đào tạo, bồi dưỡng", "X01-P2",
+     "Đào tạo, bồi dưỡng nâng cao trình độ cán bộ",
+     "Tổ chức cán bộ", "phong", "Cục Tổ chức cán bộ"),
+    ("Phòng Xây dựng pháp luật", "V03-P1",
+     "Chủ trì xây dựng dự thảo văn bản quy phạm pháp luật",
+     "Pháp chế", "phong", "Cục Pháp chế và cải cách hành chính, tư pháp"),
+    ("Phòng Cảnh sát điều tra tội phạm về trật tự xã hội", "CADL-PC02",
+     "Đấu tranh phòng, chống tội phạm về trật tự xã hội",
+     "Cảnh sát hình sự", "phong", "Công an tỉnh Đắk Lắk"),
+    ("Phòng An ninh chính trị nội bộ", "CADL-PA03",
+     "Bảo vệ an ninh chính trị nội bộ",
+     "An ninh", "phong", "Công an tỉnh Đắk Lắk"),
 ]
 
 RANKS_LEADERSHIP = ["Đại tá", "Thượng tá", "Trung tá"]
@@ -29,17 +63,38 @@ HO = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ",
 DEM = ["Văn", "Thị", "Hữu", "Minh", "Xuân", "Thu", "Hải", "Ngọc", "Đức", "Công", "Đình", "Quốc", "Thanh", "Bích", "Phương", "Gia"]
 TEN = ["Hùng", "Hương", "Anh", "Tuấn", "Linh", "Cường", "Trang", "Khoa", "Nga", "Long", "Bình", "Châu", "Duy", "Phúc", "Khang", "Tâm", "Mai", "Quỳnh", "Thảo", "Sơn"]
 
-DIRECTORS = [
-    ("Trần Minh Đức", "director_vp"),
-    ("Lê Thị Hương", "director_tccb"),
-    ("Phạm Văn Tuấn", "director_pc"),
-    ("Hoàng Thị Nga", "director_csdt"),
-    ("Ngô Quốc Hùng", "director_anctnb"),
+DIRECTOR_NAMES = [
+    ("Trần Minh Đức", "director_tmth"),
+    ("Lê Thị Hương", "director_tkbt"),
+    ("Phạm Văn Tuấn", "director_cscb"),
+    ("Hoàng Thị Nga", "director_dtbd"),
+    ("Ngô Quốc Hùng", "director_xdpl"),
+    ("Vũ Đình Khang", "director_pc02"),
+    ("Đặng Thu Trang", "director_pa03"),
 ]
 
 # Mức chất lượng / tiến độ ↔ số lần sửa, số lần nhắc nhở (khớp Hướng dẫn)
 REVISION_CHOICES = [0, 0, 0, 1, 1, 3, 5, 7]
 REMINDER_CHOICES = [0, 0, 0, 1, 1, 2, 3, 4]
+
+# Loại nhiệm vụ và độ mật
+TASK_TYPES = ["thuong_xuyen", "thuong_xuyen", "thuong_xuyen", "dot_xuat", "chuyen_de", "phoi_hop"]
+# Phần lớn là nhiệm vụ thường; nhiệm vụ có độ mật là thiểu số, đúng thực tế
+CLASSIFICATIONS = ["thuong"] * 12 + ["mat"] * 4 + ["toi_mat"] * 2 + ["tuyet_mat"]
+
+CLASSIFIED_CODENAMES = [
+    "Nhiệm vụ chuyên đề A1", "Nhiệm vụ chuyên đề A2", "Nhiệm vụ chuyên đề B1",
+    "Chuyên án K3", "Chuyên án M7", "Kế hoạch nghiệp vụ số 4",
+    "Rà soát địa bàn trọng điểm", "Xác minh theo yêu cầu nghiệp vụ",
+]
+
+ASSIGN_BASIS = [
+    "Kế hoạch công tác năm 2026 của đơn vị",
+    "Chương trình công tác trọng tâm quý",
+    "Công văn số 1245/BCA-V01 ngày 12/5/2026",
+    "Chỉ đạo trực tiếp của lãnh đạo đơn vị",
+    "Kế hoạch số 12/KH-BCA ngày 03/4/2026",
+]
 
 
 async def run_seed():
@@ -54,14 +109,24 @@ async def run_seed():
     ):
         await coll.delete_many({})
 
-    # ---------- 1. Đơn vị ----------
-    dept_docs = [
-        {"name": name, "description": desc, "force_system": force, "parent_id": None}
-        for name, desc, force in DEPARTMENTS
-    ]
-    res_depts = await db.departments.insert_many(dept_docs)
-    dept_ids = res_depts.inserted_ids
-    dept_names = [d[0] for d in DEPARTMENTS]
+    # ---------- 1. Cây cơ cấu tổ chức ----------
+    # Chèn theo thứ tự cha trước con để gán được parent_id
+    id_by_name: dict = {}
+    for name, short, desc, force, level, parent in ORG_TREE:
+        res = await db.departments.insert_one({
+            "name": name,
+            "short_name": short,
+            "description": desc,
+            "force_system": force,
+            "level": level,
+            "parent_id": str(id_by_name[parent]) if parent else None,
+        })
+        id_by_name[name] = res.inserted_id
+
+    # Cán bộ và KPI chỉ bố trí ở cấp Phòng (đơn vị cơ sở trực tiếp thực hiện)
+    unit_names = [t[0] for t in ORG_TREE if t[4] == "phong"]
+    unit_ids = [id_by_name[n] for n in unit_names]
+    dept_ids, dept_names = unit_ids, unit_names
 
     # ---------- 2. Quản trị hệ thống ----------
     admin_res = await db.users.insert_one({
@@ -73,6 +138,9 @@ async def run_seed():
         "department_id": str(dept_ids[0]),
         "position": "Quản trị hệ thống",
         "rank": "Thượng tá",
+        "service_number": "CAND-000001",
+        "clearance_level": 3,
+        "capacity_points": 200,
         "bio": "Quản trị hệ thống tính điểm KPI. Toàn quyền quản lý dữ liệu.",
         "is_admin": True,
         "is_commander": False,
@@ -81,7 +149,7 @@ async def run_seed():
 
     # ---------- 3. Lãnh đạo đơn vị (người đứng đầu) ----------
     director_ids = []
-    for i, (name, username) in enumerate(DIRECTORS):
+    for i, (name, username) in enumerate(DIRECTOR_NAMES[:len(dept_ids)]):
         r = await db.users.insert_one({
             "username": username,
             "name": name,
@@ -89,8 +157,12 @@ async def run_seed():
             "hashed_password": get_password_hash("123456"),
             "role": "director",
             "department_id": str(dept_ids[i]),
-            "position": "Trưởng đơn vị",
+            "position": "Trưởng phòng",
             "rank": RANKS_LEADERSHIP[i % len(RANKS_LEADERSHIP)],
+            "service_number": f"CAND-{100 + i:06d}",
+            # Người đứng đầu được tiếp cận tới Tuyệt mật
+            "clearance_level": 3,
+            "capacity_points": 1200,
             "bio": f"Người đứng đầu {dept_names[i]}. KPI không cao hơn KPI của tập thể đơn vị.",
             "is_admin": False,
             "is_commander": True,
@@ -110,19 +182,25 @@ async def run_seed():
                 "hashed_password": get_password_hash("123456"),
                 "role": "leader",
                 "department_id": str(dept_ids[i]),
-                "position": "Phó Trưởng đơn vị" if j == 0 else "Đội trưởng",
+                "position": "Phó Trưởng phòng" if j == 0 else "Đội trưởng",
                 "rank": RANKS_LEADERSHIP[counter % len(RANKS_LEADERSHIP)],
+                "service_number": f"CAND-{200 + counter:06d}",
+                # Lãnh đạo, chỉ huy cấp Phòng/Đội: tiếp cận tới Tối mật
+                "clearance_level": 2,
+                "capacity_points": 950,
                 "bio": f"Lãnh đạo, chỉ huy thuộc {dept_names[i]}. KPI tính theo 04 tiêu chí.",
                 "is_admin": False,
                 "is_commander": True,
             })
             leader_ids.append(r.inserted_id)
 
-    # ---------- 5. Cán bộ, chiến sĩ (6 mỗi đơn vị = 30) ----------
+    # ---------- 5. Cán bộ, chiến sĩ (6 mỗi đơn vị) ----------
+    # Cấp độ tiếp cận khác nhau để kiểm chứng cơ chế che thông tin
     staff_ids = []
     idx = 0
     for i in range(len(dept_ids)):
-        for _ in range(6):
+        for j in range(6):
+            clearance = [0, 0, 0, 1, 1, 2][j]
             r = await db.users.insert_one({
                 "username": f"canbo{idx}",
                 "name": f"{rng.choice(HO)} {rng.choice(DEM)} {rng.choice(TEN)}",
@@ -132,6 +210,10 @@ async def run_seed():
                 "department_id": str(dept_ids[i]),
                 "position": rng.choice(["Chuyên viên chính", "Chuyên viên", "Cán bộ"]),
                 "rank": RANKS_STAFF[idx % len(RANKS_STAFF)],
+                "service_number": f"CAND-{1000 + idx:06d}",
+                "clearance_level": clearance,
+                # Định mức điểm mỗi kỳ — đặt tương xứng khối lượng nhiệm vụ được giao
+                "capacity_points": rng.choice([450, 550, 550, 650, 750]),
                 "bio": "Cán bộ thực hiện nhiệm vụ công tác theo Danh mục được giao.",
                 "is_admin": False,
                 "is_commander": False,
@@ -158,7 +240,20 @@ async def run_seed():
     items_by_dept = {c["department_id"]: c["items"] for c in catalogs}
 
     all_users = await db.users.find({"role": {"$ne": "admin"}}).to_list(None)
+
+    # Người giao nhiệm vụ của từng đơn vị là trưởng phòng
+    head_of_dept = {
+        u["department_id"]: str(u["_id"])
+        for u in all_users if u.get("role") == "director" and u.get("department_id")
+    }
+    # Đồng nghiệp cùng đơn vị, để chọn cán bộ phối hợp
+    peers_by_dept: dict = {}
+    for u in all_users:
+        if u.get("department_id"):
+            peers_by_dept.setdefault(u["department_id"], []).append(str(u["_id"]))
+
     task_docs = []
+    seq = 0
     for u in all_users:
         dept_id = u.get("department_id")
         items = items_by_dept.get(dept_id)
@@ -166,24 +261,50 @@ async def run_seed():
             continue
 
         for item in rng.sample(items, k=rng.randint(4, 7)):
+            seq += 1
             status = rng.choice(["assigned", "in_progress", "review", "done", "done"])
             qty_assigned = rng.randint(1, 3)
-            qty_completed = qty_assigned if status == "done" else rng.randint(0, qty_assigned - 1) if qty_assigned > 1 else 0
+            qty_completed = qty_assigned if status == "done" else (
+                rng.randint(0, qty_assigned - 1) if qty_assigned > 1 else 0
+            )
 
             revisions = rng.choice(REVISION_CHOICES) if status in ("review", "done") else 0
             reminders = rng.choice(REMINDER_CHOICES)
 
+            # Độ mật — chỉ giao nhiệm vụ mật cho cán bộ đủ cấp độ tiếp cận
+            classification = rng.choice(CLASSIFICATIONS)
+            if CLASSIFICATION_RANK[classification] > int(u.get("clearance_level", 0) or 0):
+                classification = "thuong"
+            is_classified = classification != "thuong"
+
+            # Cán bộ phối hợp
+            peers = [p for p in peers_by_dept.get(dept_id, []) if p != str(u["_id"])]
+            co = rng.sample(peers, k=rng.randint(0, 2)) if peers else []
+
             deadline = now + timedelta(days=rng.randint(-12, 20))
             task_docs.append({
-                "title": item["task_name"],
-                "description": item.get("description"),
+                "code": f"NV-{now.year}-{now.month:02d}-{seq:04d}",
+                # Nhiệm vụ có độ mật chỉ mang tên gọi quy ước, không phải nội dung thật
+                "title": rng.choice(CLASSIFIED_CODENAMES) if is_classified else item["task_name"],
+                # Không lưu nội dung với nhiệm vụ có độ mật
+                "description": None if is_classified else item.get("description"),
+                "task_type": rng.choice(TASK_TYPES),
+                "classification": classification,
+                "file_reference": f"Số {rng.randint(100, 499)}/HS-{rng.choice(['PA03','PC02','V03','X01'])}" if is_classified else None,
+                "file_location": "Bộ phận cơ yếu đơn vị" if is_classified else None,
                 "catalog_item_id": item["id"],
+                "complexity_group": item["complexity_group"],
                 "product": item["category"],
                 "kpi_point": item["kpi_point"],
                 "quantity_assigned": qty_assigned,
                 "quantity_completed": qty_completed,
                 "assigned_to": str(u["_id"]),
+                "co_assignees": co,
+                "assigned_by": head_of_dept.get(dept_id, admin_id),
+                "assigned_at": now - timedelta(days=rng.randint(5, 25)),
+                "assigned_basis": rng.choice(ASSIGN_BASIS),
                 "department_id": dept_id,
+                "support_department_ids": [],
                 "status": status,
                 "deadline": deadline,
                 "actual_end": (deadline - timedelta(days=rng.randint(0, 4))) if status == "done" else None,
@@ -243,11 +364,15 @@ async def run_seed():
     await db.notifications.insert_many(notifications)
     print(f"  Thông báo: {len(notifications)}")
 
+    classified = sum(1 for t in task_docs if t["classification"] != "thuong")
+    print(f"  Trong đó có độ mật: {classified} nhiệm vụ")
+
     print("\nHoàn tất. Tài khoản mẫu:")
-    print("  admin / admin123          — Quản trị hệ thống")
-    print("  director_vp / 123456      — Lãnh đạo Văn phòng Bộ Công an")
-    print("  leader1 / 123456          — Lãnh đạo, chỉ huy")
-    print("  canbo0 / 123456           — Cán bộ, chiến sĩ")
+    print("  admin      / admin123  — Quản trị hệ thống (tiếp cận Tuyệt mật)")
+    print("  director_tmth / 123456 — Trưởng phòng (tiếp cận Tuyệt mật)")
+    print("  leader1    / 123456    — Lãnh đạo, chỉ huy (tiếp cận Tối mật)")
+    print("  canbo5     / 123456    — Cán bộ (tiếp cận Tối mật)")
+    print("  canbo0     / 123456    — Cán bộ (chỉ tài liệu thường)")
 
 
 if __name__ == "__main__":
