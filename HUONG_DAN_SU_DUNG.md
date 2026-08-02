@@ -9,15 +9,100 @@ trong đánh giá, xếp loại chất lượng đối với tập thể, cá nh
 
 ## 1. Tài khoản mẫu
 
-| Thẩm quyền | Tài khoản | Mật khẩu | Phạm vi |
-|---|---|---|---|
-| Quản trị hệ thống | `admin` | `admin123` | Toàn bộ dữ liệu, quản lý đơn vị, nhật ký |
-| Lãnh đạo đơn vị (người đứng đầu) | `director_vp`, `director_tccb`, `director_pc`, `director_csdt`, `director_anctnb` | `123456` | Danh mục nhiệm vụ, xác định điểm KPI (Bước 3) |
-| Lãnh đạo, chỉ huy | `leader1` … `leader10` | `123456` | Giao nhiệm vụ, thẩm định (Bước 2) |
-| Cán bộ, chiến sĩ | `canbo0` … `canbo29` | `123456` | Nhiệm vụ của mình, tự đánh giá (Bước 1) |
+> ⚠️ Đây là tài khoản của **dữ liệu mẫu**, mật khẩu để trống nghĩa (`123456`) chỉ dùng để
+> chạy thử. Phải đổi toàn bộ trước khi triển khai thật.
 
-> Lãnh đạo, chỉ huy được tính KPI theo **04 tiêu chí** (có thêm điểm D);
-> tập thể và cán bộ không giữ chức vụ tính theo **03 tiêu chí**.
+Tổng cộng **64 tài khoản**: 1 quản trị · 7 Trưởng phòng · 14 lãnh đạo, chỉ huy · 42 cán bộ.
+
+### 1.1. Tổng quan theo thẩm quyền
+
+| Thẩm quyền | Tài khoản | Mật khẩu | Cấp độ tiếp cận | Làm được gì |
+|---|---|---|---|---|
+| Quản trị hệ thống | `admin` | `admin123` | Tuyệt mật | Toàn bộ dữ liệu, quản lý đơn vị, nhật ký hệ thống |
+| Trưởng phòng (người đứng đầu) | `director_*` (7) | `123456` | Tuyệt mật | Danh mục nhiệm vụ · **Bước 3** xác định điểm KPI · chấm tiêu chí chung (E) |
+| Lãnh đạo, chỉ huy | `leader1` … `leader14` | `123456` | Tối mật | Giao nhiệm vụ · nhắc nhở · yêu cầu chỉnh sửa · **Bước 2** thẩm định |
+| Cán bộ, chiến sĩ | `canbo0` … `canbo41` | `123456` | Thường / Mật / Tối mật | Nhiệm vụ của mình · **Bước 1** tự đánh giá |
+
+> Lãnh đạo, chỉ huy (`director_*`, `leader*`) được tính KPI theo **04 tiêu chí**
+> (có thêm điểm D về kết quả lãnh đạo, chỉ đạo); tập thể và cán bộ không giữ chức vụ
+> tính theo **03 tiêu chí**.
+
+### 1.2. Trưởng phòng theo từng đơn vị
+
+| Tài khoản | Cấp bậc | Đơn vị phụ trách | Mã đơn vị |
+|---|---|---|---|
+| `director_tmth` | Đại tá | Phòng Tham mưu tổng hợp | VPB-P1 |
+| `director_tkbt` | Thượng tá | Phòng Thư ký - Biên tập | VPB-P2 |
+| `director_cscb` | Trung tá | Phòng Chính sách cán bộ | X01-P1 |
+| `director_dtbd` | Đại tá | Phòng Đào tạo, bồi dưỡng | X01-P2 |
+| `director_xdpl` | Thượng tá | Phòng Xây dựng pháp luật | V03-P1 |
+| `director_pc02` | Trung tá | Phòng Cảnh sát điều tra tội phạm về trật tự xã hội | CADL-PC02 |
+| `director_pa03` | Đại tá | Phòng An ninh chính trị nội bộ | CADL-PA03 |
+
+### 1.3. Lãnh đạo, chỉ huy và cán bộ theo từng đơn vị
+
+Mỗi phòng có **2 lãnh đạo, chỉ huy** (1 Phó Trưởng phòng + 1 Đội trưởng) và **6 cán bộ**.
+
+| Đơn vị | Phó Trưởng phòng | Đội trưởng | Cán bộ |
+|---|---|---|---|
+| Phòng Tham mưu tổng hợp (VPB-P1) | `leader1` | `leader2` | `canbo0` … `canbo5` |
+| Phòng Thư ký - Biên tập (VPB-P2) | `leader3` | `leader4` | `canbo6` … `canbo11` |
+| Phòng Chính sách cán bộ (X01-P1) | `leader5` | `leader6` | `canbo12` … `canbo17` |
+| Phòng Đào tạo, bồi dưỡng (X01-P2) | `leader7` | `leader8` | `canbo18` … `canbo23` |
+| Phòng Xây dựng pháp luật (V03-P1) | `leader9` | `leader10` | `canbo24` … `canbo29` |
+| Phòng CSĐT tội phạm về TTXH (CADL-PC02) | `leader11` | `leader12` | `canbo30` … `canbo35` |
+| Phòng An ninh chính trị nội bộ (CADL-PA03) | `leader13` | `leader14` | `canbo36` … `canbo41` |
+
+### 1.4. Cấp độ tiếp cận tài liệu của cán bộ
+
+Trong mỗi nhóm 6 cán bộ của một phòng, cấp độ tiếp cận được bố trí như sau
+(lấy `canbo0`–`canbo5` của Phòng Tham mưu tổng hợp làm ví dụ):
+
+| Vị trí trong nhóm | Ví dụ | Cấp độ tiếp cận | Xem được nhiệm vụ độ mật |
+|---|---|---|---|
+| Người thứ 1, 2, 3 | `canbo0`, `canbo1`, `canbo2` | Tài liệu thường | Không xem được nhiệm vụ có độ mật |
+| Người thứ 4, 5 | `canbo3`, `canbo4` | Đến độ **Mật** | Mật |
+| Người thứ 6 | `canbo5` | Đến độ **Tối mật** | Mật, Tối mật |
+
+Quy tắc chung: với `canbo{N}`, lấy `N mod 6` — kết quả 0/1/2 là **Thường**,
+3/4 là **Mật**, 5 là **Tối mật**.
+
+Phân bố toàn hệ thống: 21 cán bộ Thường · 14 cán bộ Mật · 7 cán bộ Tối mật.
+
+### 1.5. Tài khoản nên dùng để xem thử từng tình huống
+
+| Muốn xem | Đăng nhập | Vào trang |
+|---|---|---|
+| Nhiệm vụ mật **đầy đủ** (có số hiệu hồ sơ gốc) | `director_tmth` | Nhiệm vụ được giao |
+| Nhiệm vụ mật **bị che** vì chưa đủ cấp độ | `leader1` → lọc độ mật *Tuyệt mật* | Nhiệm vụ được giao |
+| Cán bộ **không thấy** nhiệm vụ mật nào | `canbo0` | Nhiệm vụ được giao |
+| Cây đơn vị và tải việc toàn lực lượng | `admin` | Cơ cấu tổ chức |
+| Tự đánh giá (Bước 1) | `canbo0` | Quy trình đánh giá |
+| Thẩm định (Bước 2) | `leader1` | Quy trình đánh giá |
+| Xác định điểm KPI (Bước 3) | `director_tmth` | Quy trình đánh giá |
+| Chấm tiêu chí chung (E) | `director_tmth` | Tiêu chí chung (E) |
+| Nhật ký truy cập nhiệm vụ mật | `admin` | Nhật ký hệ thống |
+
+---
+
+## 1b. Cơ cấu tổ chức mẫu
+
+Dữ liệu mẫu dựng cây **3 cấp**, gồm 12 đơn vị. Cán bộ và việc chấm KPI bố trí ở **cấp Phòng**.
+
+```
+Bộ Công an (BCA)
+├── Văn phòng Bộ Công an (VPB)
+│   ├── Phòng Tham mưu tổng hợp (VPB-P1)
+│   └── Phòng Thư ký - Biên tập (VPB-P2)
+├── Cục Tổ chức cán bộ (X01)
+│   ├── Phòng Chính sách cán bộ (X01-P1)
+│   └── Phòng Đào tạo, bồi dưỡng (X01-P2)
+├── Cục Pháp chế và cải cách hành chính, tư pháp (V03)
+│   └── Phòng Xây dựng pháp luật (V03-P1)
+└── Công an tỉnh Đắk Lắk (CADL)
+    ├── Phòng Cảnh sát điều tra tội phạm về TTXH (CADL-PC02)
+    └── Phòng An ninh chính trị nội bộ (CADL-PA03)
+```
 
 ---
 
@@ -163,11 +248,53 @@ Nhiệm vụ phát sinh chưa có trong Khung Danh mục do lãnh đạo trực 
 đến kỳ rà soát gần nhất sẽ đề xuất bổ sung vào Khung.
 
 ### 4.3. Nhiệm vụ được giao
-- Cán bộ chỉ thấy nhiệm vụ của mình; lãnh đạo, chỉ huy thấy toàn đơn vị.
+- Cán bộ chỉ thấy nhiệm vụ của mình; lãnh đạo, chỉ huy thấy nhiệm vụ **trong đơn vị mình
+  phụ trách**; quản trị hệ thống thấy toàn bộ.
+- Mỗi nhiệm vụ có: mã hiệu, loại, độ mật, sản phẩm, nhóm độ phức tạp, điểm/sản phẩm,
+  số lượng giao và hoàn thành, **điểm tối đa đạt được** (gồm phần vượt mức 120%),
+  cán bộ chủ trì và phối hợp, người giao, căn cứ giao, hạn và **số ngày còn lại/trễ**.
 - Bảng tổng hợp hiển thị ngay **tổng điểm được giao** và **A / B / C dự kiến** của kỳ.
 - Lãnh đạo, chỉ huy có 2 thao tác trực tiếp ảnh hưởng điểm KPI:
   - 🔔 **Nhắc nhở tiến độ** → tăng số lần nhắc nhở, giảm mức điểm **C**
   - 📝 **Yêu cầu hoàn thiện, chỉnh sửa** → tăng số lần sửa, giảm mức điểm **B**
+
+**Loại nhiệm vụ** và **độ mật** là hai trục độc lập:
+
+| Loại nhiệm vụ | Ý nghĩa |
+|---|---|
+| Thường xuyên | Nhiệm vụ theo chức năng, thực hiện định kỳ |
+| Đột xuất | Nhiệm vụ phát sinh ngoài kế hoạch |
+| Chuyên đề | Nhiệm vụ theo kế hoạch, chuyên đề riêng |
+| Phối hợp | Nhiệm vụ có sự tham gia của nhiều đơn vị |
+
+### 4.3b. Nhiệm vụ có độ mật
+
+Độ mật theo Luật Bảo vệ bí mật nhà nước 2018: **Mật · Tối mật · Tuyệt mật**
+(nhiệm vụ không thuộc danh mục thì để **Thường**).
+
+> **Hệ thống KHÔNG lưu nội dung của nhiệm vụ có độ mật.**
+> Chỉ lưu: mã hiệu · tên gọi quy ước · độ mật · điểm · thời hạn · số lần sửa
+> · số lần nhắc nhở · số hiệu hồ sơ gốc · nơi lưu.
+> Nội dung nghiệp vụ nằm ở hồ sơ gốc, quản lý theo chế độ mật tại đơn vị.
+> Việc này không mất tính năng nào — công thức A, B, C, D không dùng đến nội dung.
+
+Cơ chế bảo vệ:
+
+| Cơ chế | Cách hoạt động |
+|---|---|
+| Phân quyền tiếp cận | Cán bộ chỉ xem được nhiệm vụ có độ mật **≤ cấp độ tiếp cận** của mình, hoặc nhiệm vụ do chính mình thực hiện |
+| Che ở **máy chủ** | Trường nhạy cảm bị loại khỏi phản hồi API, không gửi về trình duyệt. Mở DevTools cũng không thấy |
+| Chặn ghi nội dung | Lưu nội dung vào nhiệm vụ có độ mật bị từ chối (HTTP 400) |
+| Chặn giao vượt cấp | Giao nhiệm vụ ở độ mật cao hơn cấp độ của mình bị từ chối (HTTP 403) |
+| Nhật ký truy cập | Ghi lại mọi lượt truy cập nhiệm vụ có độ mật, **kể cả lượt bị từ chối** |
+
+Khi không đủ cấp độ tiếp cận, giao diện hiển thị: tên nhiệm vụ thay bằng **mã hiệu**,
+huy hiệu độ mật kèm ổ khoá, nhãn *"chưa đủ cấp độ tiếp cận"*. Điểm, số lượng, thời hạn
+và số lần nhắc nhở **vẫn hiển thị** để việc chấm điểm KPI luôn minh bạch.
+
+⚠️ Đây là biện pháp quản lý nội bộ, **không thay thế** yêu cầu pháp lý về bảo vệ bí mật
+nhà nước (mạng nội bộ tách biệt, sản phẩm mật mã của Ban Cơ yếu Chính phủ). Xem ghi chú
+đầy đủ ở `backend/models/security_policy.py`.
 
 ### 4.4. Quy trình đánh giá
 Thực hiện 3 bước nêu trên. Mức chất lượng và tiến độ của từng công việc được chọn theo đúng
@@ -188,9 +315,42 @@ Trang hiển thị luôn tổng điểm xếp loại = E + KPI × 0,7.
 ### 4.6. Kết quả xếp loại
 Bảng điểm chi tiết A, B, C, D, KPI, E và tổng điểm; xếp nhóm theo ngưỡng 70 / 50.
 
-### 4.7. Cán bộ / Đơn vị *(Lãnh đạo đơn vị trở lên)*
-Quản lý cán bộ theo cấp bậc hàm, chức vụ, đơn vị và thẩm quyền. Đổi vai trò sang
-lãnh đạo, chỉ huy sẽ tự chuyển sang cách tính KPI 04 tiêu chí.
+### 4.7. Cơ cấu tổ chức
+Cây đơn vị nhiều cấp. Chọn một đơn vị để xem: số cán bộ (gồm cả đơn vị cấp dưới),
+KPI tập thể kỳ gần nhất, phân bố cán bộ theo nhóm xếp loại, và bảng cán bộ thuộc quyền.
+
+**Tình trạng nhận nhiệm vụ** của mỗi cán bộ được tính bằng
+*tổng điểm nhiệm vụ chưa hoàn thành / định mức điểm của cán bộ trong kỳ*:
+
+| Tình trạng | Mức tải | Ý nghĩa |
+|---|---|---|
+| 🟢 Sẵn sàng nhận nhiệm vụ | dưới 50% | Còn dư địa để giao thêm việc |
+| 🔵 Đang thực hiện | 50% – dưới 85% | Khối lượng hợp lý |
+| 🟡 Gần đầy định mức | 85% – 100% | Cân nhắc trước khi giao thêm |
+| 🔴 Quá tải | trên 100% | Vượt định mức, cần điều tiết |
+
+### 4.8. Hồ sơ cán bộ
+Bấm vào tên cán bộ trong Cơ cấu tổ chức để xem hồ sơ công tác:
+
+- **Định danh**: họ tên, cấp bậc hàm, chức vụ, đơn vị, số hiệu CAND, cấp độ tiếp cận
+- **Tải việc**: điểm đang đảm nhận / định mức, tình trạng sẵn sàng
+- **Nhiệm vụ trong kỳ**: được giao · đã hoàn thành · đang thực hiện · quá hạn, kèm số điểm
+- **Chất lượng, tiến độ**: tổng số lần phải chỉnh sửa (→ điểm B) và bị nhắc nhở (→ điểm C)
+- **KPI**: điểm kỳ gần nhất, nhóm xếp loại, bình quân năm, biểu đồ diễn biến theo tháng
+- **Bảng nhiệm vụ** của kỳ, có đánh dấu nhiệm vụ mang độ mật
+
+### 4.9. Cán bộ *(Lãnh đạo đơn vị trở lên)*
+Quản lý cán bộ theo cấp bậc hàm, chức vụ, số hiệu, đơn vị, thẩm quyền và
+**cấp độ tiếp cận tài liệu**. Đổi vai trò sang lãnh đạo, chỉ huy sẽ tự chuyển sang
+cách tính KPI 04 tiêu chí.
+
+### 4.10. Nhật ký hệ thống *(Quản trị hệ thống)*
+Lưu vết thao tác trên hệ thống, trong đó có riêng nhật ký truy cập nhiệm vụ có độ mật:
+
+| Hành động | Ý nghĩa |
+|---|---|
+| `task.classified_access` | Truy cập nhiệm vụ có độ mật **thành công** |
+| `task.classified_denied` | Truy cập **bị từ chối** do chưa đủ cấp độ tiếp cận |
 
 ---
 
@@ -228,8 +388,21 @@ Tài liệu API: `http://localhost:8000/docs`
 python -m backend.services.seeder
 ```
 
-Dữ liệu mẫu phủ đủ: 3 nhóm độ phức tạp, 6 mức chất lượng, 6 mức tiến độ, 3 nhóm xếp loại KPI,
-5 trạng thái quy trình, cả tập thể và cá nhân, 7 tháng liên tiếp để tính KPI quý/năm.
+Dữ liệu mẫu sinh ra:
+
+| Nội dung | Số lượng |
+|---|---|
+| Đơn vị (cây 3 cấp) | 12 |
+| Cán bộ | 64 |
+| Danh mục nhiệm vụ | 8 (7 đã duyệt + 1 bản nháp) |
+| Kỳ đánh giá KPI | 491 |
+| Nhiệm vụ công tác | 350, trong đó **73 có độ mật** |
+
+Phủ đủ mọi trường hợp của Hướng dẫn: 3 nhóm độ phức tạp · 6 mức chất lượng · 6 mức tiến độ
+· 3 nhóm xếp loại KPI · 5 trạng thái quy trình · cả tập thể và cá nhân · 7 tháng liên tiếp
+để tính KPI quý và năm · 4 loại nhiệm vụ · 4 độ mật · cán bộ có cấp độ tiếp cận khác nhau.
+
+Sau khi chạy, dùng bảng tài khoản ở **mục 1** để đăng nhập.
 
 ### 5.3. Frontend
 
