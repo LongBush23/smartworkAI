@@ -174,7 +174,7 @@ export const kpiApi = {
     return res.data;
   },
   
-  getEvaluations: async (params?: { target_id?: string; department_id?: string; period_type?: string; period_year?: number }) => {
+  getEvaluations: async (params?: { target_id?: string; department_id?: string; period_type?: string; period_month?: number; period_year?: number }) => {
     const res = await api.get<KPIEvaluation[]>('/kpi/evaluations', { params });
     return res.data;
   },

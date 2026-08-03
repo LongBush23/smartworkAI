@@ -54,6 +54,8 @@ function StatusBadge({ status }: { status: string }) {
 
 const KPIEvaluate = () => {
   const [evaluations, setEvaluations] = useState<KPIEvaluation[]>([]);
+  const today = new Date();
+  const [period, setPeriod] = useState({ month: today.getMonth() + 1, year: today.getFullYear() });
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState('staff');
   const [userId, setUserId] = useState('');
@@ -63,7 +65,7 @@ const KPIEvaluate = () => {
   const [proposedRating, setProposedRating] = useState('group_2');
   const [reviewNote, setReviewNote] = useState('');
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [period.month, period.year]);
 
   const fetchData = async () => {
     try {
@@ -71,7 +73,10 @@ const KPIEvaluate = () => {
       const meRes = await api.get('/auth/me');
       setUserRole(meRes.data.role);
       setUserId(meRes.data._id);
-      const evals = await kpiApi.getEvaluations();
+      const evals = await kpiApi.getEvaluations({
+        period_month: period.month,
+        period_year: period.year,
+      });
       setEvaluations(evals);
     } catch (error) {
       console.error('Failed to fetch evaluations', error);
@@ -139,7 +144,28 @@ const KPIEvaluate = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Quy trình Tính điểm KPI</h1>
+      <div className="flex flex-wrap gap-3 justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-800">Quy trình Tính điểm KPI</h1>
+        <div className="flex items-center gap-2">
+          <select
+            value={period.month}
+            onChange={e => setPeriod({ ...period, month: parseInt(e.target.value) })}
+            className="px-3 py-1.5 border border-gray-300 rounded-sm text-sm bg-white"
+          >
+            {[...Array(12)].map((_, i) => <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>)}
+          </select>
+          <select
+            value={period.year}
+            onChange={e => setPeriod({ ...period, year: parseInt(e.target.value) })}
+            className="px-3 py-1.5 border border-gray-300 rounded-sm text-sm bg-white"
+          >
+            {[...Array(5)].map((_, i) => {
+              const y = today.getFullYear() - 2 + i;
+              return <option key={y} value={y}>{y}</option>;
+            })}
+          </select>
+        </div>
+      </div>
 
       {/* Sơ đồ 3 bước */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">

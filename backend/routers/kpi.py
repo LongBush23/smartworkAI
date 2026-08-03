@@ -129,17 +129,27 @@ async def list_evaluations(
     target_id: Optional[str] = None,
     department_id: Optional[str] = None,
     period_type: Optional[str] = None,
+    period_month: Optional[int] = None,
     period_year: Optional[int] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    role = current_user.get("role", "staff")
+
     if target_id:
         query["target_id"] = target_id
-    elif current_user["role"] == "staff":
+    elif role == "staff":
+        # Cán bộ không giữ chức vụ chỉ thấy kỳ đánh giá của mình
         query["target_id"] = str(current_user["_id"])
-        
+
     if department_id:
         query["department_id"] = department_id
+    elif not target_id and role in ("leader", "director") and current_user.get("department_id"):
+        # Lãnh đạo, chỉ huy chỉ thẩm định trong phạm vi đơn vị mình phụ trách
+        query["department_id"] = current_user["department_id"]
+
+    if period_month:
+        query["period_month"] = period_month
     if period_type:
         query["period_type"] = period_type
     if period_year:
