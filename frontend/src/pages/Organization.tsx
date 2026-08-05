@@ -90,8 +90,8 @@ const Organization = () => {
       <div key={node._id}>
         <div
           onClick={() => selectDept(node._id)}
-          style={{ paddingLeft: `${depth * 14 + 8}px` }}
-          className={`flex items-center gap-1.5 py-1.5 pr-2 cursor-pointer border-l-2 text-sm transition-colors ${
+          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          className={`flex items-start gap-1.5 py-2 pr-2 cursor-pointer border-l-2 text-sm transition-colors ${
             isSelected
               ? 'bg-navy-50 border-navy-600 text-navy-900 font-medium'
               : 'border-transparent text-navy-700 hover:bg-navy-50/60'
@@ -99,15 +99,19 @@ const Organization = () => {
         >
           <button
             onClick={e => { e.stopPropagation(); if (hasChildren) toggle(node._id); }}
-            className={`shrink-0 ${hasChildren ? 'text-navy-400' : 'invisible'}`}
+            className={`shrink-0 mt-0.5 ${hasChildren ? 'text-navy-400' : 'invisible'}`}
           >
             {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
-          <Building2 size={14} className={`shrink-0 ${LEVEL_ICON_COLOR[node.level] ?? 'text-navy-400'}`} />
-          <span className="truncate flex-1">{node.short_name || node.name}</span>
-          {node.total_member_count > 0 && (
-            <span className="text-[11px] text-navy-400 tabular shrink-0">{node.total_member_count}</span>
-          )}
+          <Building2 size={14} className={`shrink-0 mt-0.5 ${LEVEL_ICON_COLOR[node.level] ?? 'text-navy-400'}`} />
+          <div className="flex-1 min-w-0">
+            {/* Tên đầy đủ của đơn vị, xuống dòng thay vì cắt bớt */}
+            <p className="leading-snug">{node.name}</p>
+            <p className="text-[10px] text-navy-400 mt-0.5">
+              {DEPT_LEVEL_LABELS[node.level]}
+              {node.total_member_count > 0 && ` · ${node.total_member_count} cán bộ`}
+            </p>
+          </div>
         </div>
         {isOpen && node.children.map(c => renderNode(c, depth + 1))}
       </div>
@@ -132,7 +136,7 @@ const Organization = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-4">
         {/* Cây đơn vị */}
         <div className="bg-white border border-navy-200 rounded-sm overflow-hidden self-start">
           <div className="px-3 py-2 border-b border-navy-200 bg-navy-50">
@@ -155,16 +159,19 @@ const Organization = () => {
                 <div className="px-4 py-3 border-b border-navy-200 bg-navy-700 text-white">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h2 className="font-semibold truncate">{selected.name}</h2>
+                      <h2 className="font-semibold leading-snug">{selected.name}</h2>
                       <p className="text-[11px] text-navy-200 mt-0.5">
                         {DEPT_LEVEL_LABELS[selected.level]}
-                        {selected.force_system && ` · Hệ ${selected.force_system}`}
+                        {selected.force_system && ` · Hệ lực lượng ${selected.force_system}`}
                       </p>
                     </div>
                     {selected.short_name && (
-                      <span className="shrink-0 px-2 py-0.5 bg-navy-800 text-gold-300 text-xs font-mono rounded-sm">
-                        {selected.short_name}
-                      </span>
+                      <div className="shrink-0 text-right">
+                        <p className="text-[9px] text-navy-300 uppercase tracking-wide">Mã đơn vị</p>
+                        <span className="inline-block px-2 py-0.5 bg-navy-800 text-gold-300 text-xs font-mono rounded-sm mt-0.5">
+                          {selected.short_name}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>

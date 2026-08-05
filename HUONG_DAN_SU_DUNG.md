@@ -45,13 +45,13 @@ Mỗi phòng có **2 lãnh đạo, chỉ huy** (1 Phó Trưởng phòng + 1 Đ�
 
 | Đơn vị | Phó Trưởng phòng | Đội trưởng | Cán bộ |
 |---|---|---|---|
-| Phòng Tham mưu tổng hợp (VPB-P1) | `leader1` | `leader2` | `canbo0` … `canbo5` |
-| Phòng Thư ký - Biên tập (VPB-P2) | `leader3` | `leader4` | `canbo6` … `canbo11` |
-| Phòng Chính sách cán bộ (X01-P1) | `leader5` | `leader6` | `canbo12` … `canbo17` |
-| Phòng Đào tạo, bồi dưỡng (X01-P2) | `leader7` | `leader8` | `canbo18` … `canbo23` |
-| Phòng Xây dựng pháp luật (V03-P1) | `leader9` | `leader10` | `canbo24` … `canbo29` |
-| Phòng CSĐT tội phạm về TTXH (CADL-PC02) | `leader11` | `leader12` | `canbo30` … `canbo35` |
-| Phòng An ninh chính trị nội bộ (CADL-PA03) | `leader13` | `leader14` | `canbo36` … `canbo41` |
+| Phòng Tham mưu tổng hợp | `leader1` | `leader2` | `canbo0` … `canbo5` |
+| Phòng Thư ký - Biên tập | `leader3` | `leader4` | `canbo6` … `canbo11` |
+| Phòng Chính sách cán bộ | `leader5` | `leader6` | `canbo12` … `canbo17` |
+| Phòng Đào tạo, bồi dưỡng | `leader7` | `leader8` | `canbo18` … `canbo23` |
+| Phòng Xây dựng pháp luật | `leader9` | `leader10` | `canbo24` … `canbo29` |
+| Phòng Cảnh sát điều tra tội phạm về trật tự xã hội | `leader11` | `leader12` | `canbo30` … `canbo35` |
+| Phòng An ninh chính trị nội bộ | `leader13` | `leader14` | `canbo36` … `canbo41` |
 
 ### 1.4. Cấp độ tiếp cận tài liệu của cán bộ
 
@@ -90,19 +90,36 @@ Phân bố toàn hệ thống: 21 cán bộ Thường · 14 cán bộ Mật · 7
 Dữ liệu mẫu dựng cây **3 cấp**, gồm 12 đơn vị. Cán bộ và việc chấm KPI bố trí ở **cấp Phòng**.
 
 ```
-Bộ Công an (BCA)
-├── Văn phòng Bộ Công an (VPB)
-│   ├── Phòng Tham mưu tổng hợp (VPB-P1)
-│   └── Phòng Thư ký - Biên tập (VPB-P2)
-├── Cục Tổ chức cán bộ (X01)
-│   ├── Phòng Chính sách cán bộ (X01-P1)
-│   └── Phòng Đào tạo, bồi dưỡng (X01-P2)
-├── Cục Pháp chế và cải cách hành chính, tư pháp (V03)
-│   └── Phòng Xây dựng pháp luật (V03-P1)
-└── Công an tỉnh Đắk Lắk (CADL)
-    ├── Phòng Cảnh sát điều tra tội phạm về TTXH (CADL-PC02)
-    └── Phòng An ninh chính trị nội bộ (CADL-PA03)
+Bộ Công an
+├── Văn phòng Bộ Công an
+│   ├── Phòng Tham mưu tổng hợp
+│   └── Phòng Thư ký - Biên tập
+├── Cục Tổ chức cán bộ
+│   ├── Phòng Chính sách cán bộ
+│   └── Phòng Đào tạo, bồi dưỡng
+├── Cục Pháp chế và cải cách hành chính, tư pháp
+│   └── Phòng Xây dựng pháp luật
+└── Công an tỉnh Đắk Lắk
+    ├── Phòng Cảnh sát điều tra tội phạm về trật tự xã hội
+    └── Phòng An ninh chính trị nội bộ
 ```
+
+Mỗi đơn vị có thêm **mã đơn vị** để tra cứu nhanh, hiển thị ở góc phải khi mở chi tiết đơn vị:
+
+| Đơn vị | Mã đơn vị |
+|---|---|
+| Bộ Công an | BCA |
+| Văn phòng Bộ Công an | VPB |
+| Cục Tổ chức cán bộ | X01 |
+| Cục Pháp chế và cải cách hành chính, tư pháp | V03 |
+| Công an tỉnh Đắk Lắk | CADL |
+| Phòng Tham mưu tổng hợp | VPB-P1 |
+| Phòng Thư ký - Biên tập | VPB-P2 |
+| Phòng Chính sách cán bộ | X01-P1 |
+| Phòng Đào tạo, bồi dưỡng | X01-P2 |
+| Phòng Xây dựng pháp luật | V03-P1 |
+| Phòng Cảnh sát điều tra tội phạm về trật tự xã hội | CADL-PC02 |
+| Phòng An ninh chính trị nội bộ | CADL-PA03 |
 
 ---
 

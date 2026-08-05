@@ -35,9 +35,9 @@ Mật khẩu: `admin` dùng `admin123`, tất cả tài khoản còn lại dùng
 
 | Bước | Làm gì | Phải thấy gì |
 |---|---|---|
-| 1 | Vào **Cơ cấu tổ chức** | Cây 12 đơn vị 3 cấp: Bộ Công an → 4 Cục/CA tỉnh → 7 Phòng. Số bên phải mỗi dòng là số cán bộ (gồm cả cấp dưới) |
-| 2 | Bấm **BCA** (dòng trên cùng) | 63 cán bộ · 4 đơn vị trực thuộc · chưa có cán bộ trực tiếp |
-| 3 | Bấm **VPB-P1** (Phòng Tham mưu tổng hợp) | 10 cán bộ · KPI tập thể · thanh phân bố xếp loại N1/N2/N3 · bảng cán bộ bên dưới |
+| 1 | Vào **Cơ cấu tổ chức** | Cây 12 đơn vị 3 cấp, ghi **tên đầy đủ**: Bộ Công an → 4 Cục / Công an tỉnh → 7 Phòng. Dưới mỗi tên là cấp đơn vị và số cán bộ (gồm cả cấp dưới) |
+| 2 | Bấm **Bộ Công an** (dòng trên cùng) | 63 cán bộ · 4 đơn vị trực thuộc · chưa có cán bộ trực tiếp |
+| 3 | Bấm **Phòng Tham mưu tổng hợp** | 10 cán bộ · KPI tập thể · thanh phân bố xếp loại Nhóm 1/2/3 · bảng cán bộ bên dưới. Góc phải ghi **Mã đơn vị** để tra cứu |
 | 4 | Xem cột **Tải việc** | Thanh màu + phần trăm + nhãn: Sẵn sàng (xanh) · Đang thực hiện (xanh dương) · Gần đầy (vàng) · Quá tải (đỏ) |
 | 5 | Xem cột **Tiếp cận** | Có ổ khoá vàng ở người được tiếp cận tài liệu mật, kèm số nhiệm vụ mật đang giữ |
 | 6 | Bấm vào **tên một cán bộ** | Mở hồ sơ: số hiệu CAND, cấp bậc, tải việc, nhiệm vụ giao/hoàn thành/quá hạn, số lần sửa (→ điểm B) và nhắc nhở (→ điểm C), biểu đồ diễn biến KPI 7 tháng |
@@ -50,10 +50,10 @@ Mật khẩu: `admin` dùng `admin123`, tất cả tài khoản còn lại dùng
 ## Kịch bản 2 — Nhiệm vụ có độ mật ⭐
 Đây là phần quan trọng nhất. Ta xem **cùng một nhiệm vụ** bằng 3 tài khoản khác cấp độ.
 
-Nhiệm vụ dùng để thử: **`NV-2026-08-0014`**, độ **TUYỆT MẬT**, thuộc Phòng Chính sách cán bộ (X01-P1).
+Nhiệm vụ dùng để thử: **`NV-2026-08-0014`**, độ **TUYỆT MẬT**, thuộc **Phòng Chính sách cán bộ**.
 
 ### 2a. Người đủ cấp độ tiếp cận
-**Đăng nhập: `director_cscb` / `123456`** *(Trưởng phòng X01-P1, tiếp cận Tuyệt mật)*
+**Đăng nhập: `director_cscb` / `123456`** *(Trưởng phòng Phòng Chính sách cán bộ, tiếp cận Tuyệt mật)*
 
 | Bước | Làm gì | Phải thấy gì |
 |---|---|---|
@@ -63,7 +63,7 @@ Nhiệm vụ dùng để thử: **`NV-2026-08-0014`**, độ **TUYỆT MẬT**, 
 | 4 | Bấm **Chi tiết** | Ô "Số hiệu hồ sơ gốc" và "Nơi lưu hồ sơ" **có dữ liệu**. Có dòng chữ đỏ: *hệ thống không lưu nội dung của nhiệm vụ có độ mật* |
 
 ### 2b. Người **thiếu** cấp độ tiếp cận
-**Đăng nhập: `leader5` / `123456`** *(Phó Trưởng phòng cùng phòng X01-P1, chỉ tiếp cận Tối mật)*
+**Đăng nhập: `leader5` / `123456`** *(Phó Trưởng phòng cùng phòng Phòng Chính sách cán bộ, chỉ tiếp cận Tối mật)*
 
 | Bước | Làm gì | Phải thấy gì |
 |---|---|---|
@@ -77,7 +77,7 @@ Nhiệm vụ dùng để thử: **`NV-2026-08-0014`**, độ **TUYỆT MẬT**, 
 > `description` **không tồn tại** trong dữ liệu trả về. Máy chủ đã loại bỏ trước khi gửi.
 
 ### 2c. Cán bộ không được tiếp cận tài liệu mật
-**Đăng nhập: `canbo12` / `123456`** *(cán bộ X01-P1, chỉ tài liệu thường)*
+**Đăng nhập: `canbo12` / `123456`** *(cán bộ Phòng Chính sách cán bộ, chỉ tài liệu thường)*
 
 | Bước | Làm gì | Phải thấy gì |
 |---|---|---|
