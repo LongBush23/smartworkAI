@@ -365,12 +365,28 @@ async def seed_kpi_data(
 
     # ---------- 2. Phân hồ sơ kết quả cho từng cán bộ ----------
     users = await db.users.find({"role": {"$ne": "admin"}}).to_list(None)
-    # Bảo đảm cả 3 nhóm xếp loại đều xuất hiện: xoay vòng hồ sơ theo thứ tự
+    # Bảo đảm cả 3 nhóm xếp loại đều xuất hiện: xoay vòng hồ sơ theo thứ tự.
+    # Thang này xếp từ tốt nhất đến kém nhất, dùng để dao động theo tháng.
     profile_cycle = ["xuat_sac", "tot", "kha", "trung_binh", "yeu", "khong_dat"]
-    user_profile = {
-        str(u["_id"]): profile_cycle[idx % len(profile_cycle)]
+    user_base_profile = {
+        str(u["_id"]): idx % len(profile_cycle)
         for idx, u in enumerate(users)
     }
+
+    def profile_for(uid: str, month: int, year: int) -> str:
+        """
+        Hồ sơ kết quả của một cán bộ TRONG MỘT THÁNG cụ thể.
+
+        Mỗi người có xu hướng riêng, nhưng tháng nào cũng y hệt nhau là phi thực
+        tế — và tai hại: khi kết quả tất định theo người, mô hình cảnh báo sớm
+        chỉ học được "ai yếu thì yếu", tức nhắc lại điều lãnh đạo đã biết, chứ
+        không rút ra được tín hiệu nào từ tiến độ trong kỳ.
+        Vì vậy cho dao động quanh mức nền của từng người.
+        """
+        base = user_base_profile[uid]
+        # Dao động tất định theo (người, kỳ) để chạy lại seeder vẫn ra kết quả cũ
+        jitter = random.Random(f"{uid}-{year}-{month}").choice([-2, -1, 0, 0, 0, 1, 1, 2])
+        return profile_cycle[max(0, min(len(profile_cycle) - 1, base + jitter))]
 
     months = []
     for k in range(months_back, 0, -1):
@@ -423,7 +439,7 @@ async def seed_kpi_data(
             items = catalogs_by_dept.get(dept_id)
             if not items:
                 continue
-            profile = user_profile[str(u["_id"])]
+            profile = profile_for(str(u["_id"]), month, year)
             task_scores = _build_task_scores(items, profile, rng)
             doc = _make_evaluation(
                 evaluation_type="individual",
@@ -457,7 +473,7 @@ async def seed_kpi_data(
                 if groups else 0.0
             )
 
-            profile = user_profile[str(u["_id"])]
+            profile = profile_for(str(u["_id"]), month, year)
             task_scores = _build_task_scores(items, profile, rng)
             # Chỉ người đứng đầu đơn vị (director) bị chặn trần theo KPI tập thể
             cap = collective_kpi.get((dept_id, month, year)) if u["role"] == "director" else None
@@ -508,7 +524,7 @@ async def seed_kpi_data(
             continue
 
         status = statuses[idx % len(statuses)]
-        profile = user_profile[str(u["_id"])]
+        profile = profile_for(str(u["_id"]), cur_m, cur_y)
         task_scores = _build_task_scores(items, profile, rng)
 
         is_commander = u.get("role") in ("leader", "director")
@@ -569,4 +585,8 @@ async def seed_kpi_data(
         "evaluations": len(evaluations),
         "months": len(months) + 1,
         "users": len(users),
+        # Trả hàm này ra để phần sinh nhiệm vụ dùng CÙNG hồ sơ kết quả.
+        # Nếu nhiệm vụ và kỳ đánh giá mô tả hai mức năng lực khác nhau thì dữ
+        # liệu mâu thuẫn, và mô hình cảnh báo sớm không học được gì từ tiến độ.
+        "profile_for": profile_for,
     }

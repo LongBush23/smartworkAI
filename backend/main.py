@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import auth, departments, employees, tasks, notifications, comments, kpi
+from backend.routers import auth, departments, employees, tasks, notifications, comments, kpi, ai
 
 app = FastAPI(
     title="Hệ thống Tính điểm KPI trong Công an nhân dân",
@@ -23,6 +23,7 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(comments.router, prefix="/api/tasks", tags=["comments"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(kpi.router, tags=["kpi"])
+app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
 
 # Audit logs endpoint (Admin only)
 from fastapi import Depends

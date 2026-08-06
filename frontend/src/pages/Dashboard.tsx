@@ -7,6 +7,7 @@ import { kpiApi, KPI_GROUP_LABELS, KPI_GROUP_COLORS } from '../lib/kpi-api';
 import type { KPIEvaluation } from '../lib/kpi-api';
 import { taskApi, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '../lib/task-api';
 import type { Task } from '../lib/task-api';
+import { EarlyWarning } from '../components/EarlyWarning';
 
 const MONTH_NAMES = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
 
@@ -147,6 +148,10 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {['leader', 'director', 'admin'].includes(me?.role) && (
+        <EarlyWarning departmentId={me?.department_id} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Diễn biến KPI */}

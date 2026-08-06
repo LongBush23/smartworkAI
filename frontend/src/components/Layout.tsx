@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, LogOut, Bell, Shield, Menu, X,
-  Award, FileText, BarChart2, ListChecks, ClipboardCheck, ClipboardList, Network,
+  Award, FileText, BarChart2, ListChecks, ClipboardCheck, ClipboardList, Network, ShieldAlert,
 } from 'lucide-react';
 import api from '../lib/api';
 import { CLEARANCE_LABELS } from '../lib/task-api';
@@ -121,9 +121,14 @@ const Layout = () => {
             <>
               <p className="section-label px-3 pt-4 pb-1 !text-navy-500">Quản lý</p>
               {isDirectorPlus && (
-                <Link to="/employees" className={linkClass('/employees')}>
-                  <Users size={17} /> <span>Cán bộ</span>
-                </Link>
+                <>
+                  <Link to="/employees" className={linkClass('/employees')}>
+                    <Users size={17} /> <span>Cán bộ</span>
+                  </Link>
+                  <Link to="/quality-review" className={linkClass('/quality-review')}>
+                    <ShieldAlert size={17} /> <span>Rà soát chất lượng</span>
+                  </Link>
+                </>
               )}
               {isAdmin && (
                 <Link to="/audit-logs" className={linkClass('/audit-logs')}>

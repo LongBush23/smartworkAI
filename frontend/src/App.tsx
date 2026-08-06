@@ -16,6 +16,7 @@ import KPIResults from './pages/KPIResults';
 import KPICriteria from './pages/KPICriteria';
 import Organization from './pages/Organization';
 import EmployeeDetail from './pages/EmployeeDetail';
+import QualityReview from './pages/QualityReview';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
@@ -37,6 +38,7 @@ function App() {
               <Route path="profile" element={<Profile />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="audit-logs" element={<AuditLogs />} />
+              <Route path="quality-review" element={<QualityReview />} />
               <Route path="kpi">
                 <Route index element={<KPIDashboard />} />
                 <Route path="catalog" element={<KPICatalogPage />} />

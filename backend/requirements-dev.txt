@@ -2,3 +2,6 @@
 
 # Kiểm thử
 pytest==8.3.4
+# Bắt buộc: các test của mô hình AI dùng async. Thiếu gói này pytest sẽ báo lỗi
+# rõ ràng chứ không âm thầm bỏ qua, nhưng vẫn phải khai báo để cài mới chạy được.
+pytest-asyncio==1.4.0

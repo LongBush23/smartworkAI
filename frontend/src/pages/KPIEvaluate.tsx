@@ -3,6 +3,7 @@ import { kpiApi } from '../lib/kpi-api';
 import type { KPIEvaluation, TaskKPIScore } from '../lib/kpi-api';
 import { Check, ClipboardList, Send, ChevronRight } from 'lucide-react';
 import api from '../lib/api';
+import { GuidelineLookup } from '../components/GuidelineLookup';
 
 const STEP_LABELS = [
   'Tự đánh giá và đề xuất mức xếp loại',
@@ -186,6 +187,8 @@ const KPIEvaluate = () => {
           ))}
         </div>
       </div>
+
+      <GuidelineLookup />
 
       {!selectedEval ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
