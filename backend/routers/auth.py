@@ -18,11 +18,11 @@ def fix_id(doc):
 async def register(user: UserCreate):
     existing_user = await db.users.find_one({"username": user.username})
     if existing_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise HTTPException(status_code=400, detail="Tên đăng nhập đã tồn tại")
     
     existing_email = await db.users.find_one({"email": user.email})
     if existing_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Thư điện tử đã được sử dụng")
     
     hashed_password = get_password_hash(user.password)
     new_user = {
@@ -53,7 +53,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     if not user or not verify_password(form_data.password, user["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Tài khoản hoặc mật khẩu không chính xác",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -100,7 +100,7 @@ async def refresh_access_token(data: RefreshTokenRequest):
     from backend.security import create_access_token
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Phiên đăng nhập không hợp lệ hoặc đã hết hạn",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:

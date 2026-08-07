@@ -80,7 +80,7 @@ async def approve_kpi_catalog(
         }
     )
     if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Catalog not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy Danh mục nhiệm vụ")
     return {"message": "Catalog approved"}
 
 # ================= 2. QUẢN LÝ KỲ ĐÁNH GIÁ =================
@@ -94,14 +94,14 @@ async def create_evaluation(
     if eval_in.evaluation_type.value == "individual":
         target = await db.users.find_one({"_id": ObjectId(eval_in.target_id)})
         if not target:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="Không tìm thấy cán bộ")
         target_name = target.get("name", target.get("username"))
         target_role = target.get("role")
         department_id = target.get("department_id")
     else:
         target = await db.departments.find_one({"_id": ObjectId(eval_in.target_id)})
         if not target:
-            raise HTTPException(status_code=404, detail="Department not found")
+            raise HTTPException(status_code=404, detail="Không tìm thấy đơn vị")
         target_name = target.get("name")
         target_role = None
         department_id = str(target["_id"])
@@ -168,7 +168,7 @@ async def get_evaluation(
 ):
     doc = await db.kpi_evaluations.find_one({"_id": ObjectId(eval_id)})
     if not doc:
-        raise HTTPException(status_code=404, detail="Evaluation not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy kỳ đánh giá")
     doc["id"] = str(doc.pop("_id"))
     return doc
 
@@ -183,10 +183,10 @@ async def submit_self_evaluation(
     # Basic check - ensure user owns this evaluation if they are staff
     eval_doc = await db.kpi_evaluations.find_one({"_id": ObjectId(eval_id)})
     if not eval_doc:
-        raise HTTPException(status_code=404, detail="Evaluation not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy kỳ đánh giá")
         
     if current_user["role"] == "staff" and eval_doc["target_id"] != str(current_user["_id"]):
-        raise HTTPException(status_code=403, detail="Not allowed to evaluate this target")
+        raise HTTPException(status_code=403, detail="Bạn không có quyền đánh giá đối tượng này")
     
     self_eval_data = {
         "status": "submitted",
@@ -253,7 +253,7 @@ async def submit_general_criteria(
     # First get the evaluation to check kpi score
     eval_doc = await db.kpi_evaluations.find_one({"_id": ObjectId(eval_id)})
     if not eval_doc:
-        raise HTTPException(status_code=404, detail="Evaluation not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy kỳ đánh giá")
         
     kpi_score = eval_doc.get("approval", {}).get("kpi_score", 0)
     total_E = sum(score.actual_score for score in criteria_in.scores)

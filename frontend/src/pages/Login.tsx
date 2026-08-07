@@ -30,12 +30,31 @@ const Login = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
       toast.success('Đăng nhập thành công!');
       onLoginSuccess();
     } catch (err: any) {
-      let msg = err.response?.data?.detail || 'Tài khoản hoặc mật khẩu không chính xác.';
-      if (typeof msg !== 'string') {
-        msg = 'Tài khoản hoặc mật khẩu không chính xác.';
+      // Phân biệt ba tình huống khác hẳn nhau. Trước đây gộp hết thành "sai tài
+      // khoản hoặc mật khẩu", nên khi máy chủ không phản hồi hoặc bị chặn CORS,
+      // người dùng cứ ngỡ mình gõ sai mật khẩu và loay hoay không rõ nguyên nhân.
+      let msg: string;
+
+      if (!err.response) {
+        // Không nhận được phản hồi: máy chủ chưa chạy, mất mạng, hoặc bị CORS chặn
+        msg =
+          'Không kết nối được máy chủ. Kiểm tra máy chủ đã chạy chưa và ' +
+          'địa chỉ giao diện đã được phép gọi API (biến CORS_ORIGINS).';
+      } else {
+        const detail = err.response?.data?.detail;
+        if (typeof detail === 'string' && detail) {
+          // Máy chủ có nêu lý do cụ thể — hiện đúng lý do đó, ví dụ trường hợp
+          // tài khoản dùng mật khẩu mặc định bị chặn trên môi trường thật
+          msg = detail;
+        } else if (err.response.status === 401) {
+          msg = 'Tài khoản hoặc mật khẩu không chính xác.';
+        } else {
+          msg = `Máy chủ trả về lỗi ${err.response.status}. Vui lòng thử lại.`;
+        }
       }
+
       setErrorMsg(msg);
-      toast.error(msg);
+      toast.error(msg, { duration: 7000 });
       setPassword(''); // Xoá password để người dùng nhập lại dễ hơn
       setShake(true);
       setTimeout(() => setShake(false), 500);

@@ -174,7 +174,7 @@ async def create_employee(employee: UserCreate, current_user: dict = Depends(req
     
     # Director can only create staff/leader; Admin can create any role
     if current_user.get("role") == "director" and emp_dict.get("role") not in ["staff", "leader", None]:
-        raise HTTPException(status_code=403, detail="Director chỉ có thể tạo tài khoản Staff hoặc Leader")
+        raise HTTPException(status_code=403, detail="Lãnh đạo đơn vị chỉ được tạo tài khoản Cán bộ hoặc Lãnh đạo, chỉ huy")
     
     if not emp_dict.get("role"):
         emp_dict["role"] = "staff"
