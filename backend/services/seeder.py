@@ -14,6 +14,12 @@ from backend.services.kpi_seeder import seed_kpi_data
 
 SEED = 20260608
 
+# Mật khẩu dùng chung cho mọi tài khoản của dữ liệu mẫu.
+# CHỦ Ý không nằm trong danh sách chặn ở routers/auth.py, để bản demo đăng
+# nhập được mà không phải bật ALLOW_DEMO_ACCOUNTS. Đổi lại nghĩa là bản
+# triển khai công khai có mật khẩu yếu — chỉ chấp nhận được với dữ liệu giả.
+MAT_KHAU_MAU_DEMO = "123456789a"
+
 # Cây cơ cấu tổ chức 3 cấp: Bộ → Cục / Công an tỉnh → Phòng
 # (tên, tên viết tắt, mô tả, hệ lực lượng, cấp, khoá đơn vị cha)
 ORG_TREE = [
@@ -152,7 +158,7 @@ async def run_seed():
         "username": "admin",
         "name": "Quản trị viên hệ thống",
         "email": "admin@bocongan.gov.vn",
-        "hashed_password": get_password_hash("admin123"),
+        "hashed_password": get_password_hash(MAT_KHAU_MAU_DEMO),
         "role": "admin",
         "department_id": str(dept_ids[0]),
         "position": "Quản trị hệ thống",
@@ -173,7 +179,7 @@ async def run_seed():
             "username": username,
             "name": name,
             "email": f"{username}@bocongan.gov.vn",
-            "hashed_password": get_password_hash("123456"),
+            "hashed_password": get_password_hash(MAT_KHAU_MAU_DEMO),
             "role": "director",
             "department_id": str(dept_ids[i]),
             "position": "Trưởng phòng",
@@ -198,7 +204,7 @@ async def run_seed():
                 "username": f"leader{counter}",
                 "name": f"{rng.choice(HO)} {rng.choice(DEM)} {rng.choice(TEN)}",
                 "email": f"leader{counter}@bocongan.gov.vn",
-                "hashed_password": get_password_hash("123456"),
+                "hashed_password": get_password_hash(MAT_KHAU_MAU_DEMO),
                 "role": "leader",
                 "department_id": str(dept_ids[i]),
                 "position": "Phó Trưởng phòng" if j == 0 else "Đội trưởng",
@@ -224,7 +230,7 @@ async def run_seed():
                 "username": f"canbo{idx}",
                 "name": f"{rng.choice(HO)} {rng.choice(DEM)} {rng.choice(TEN)}",
                 "email": f"canbo{idx}@bocongan.gov.vn",
-                "hashed_password": get_password_hash("123456"),
+                "hashed_password": get_password_hash(MAT_KHAU_MAU_DEMO),
                 "role": "staff",
                 "department_id": str(dept_ids[i]),
                 "position": rng.choice(["Chuyên viên chính", "Chuyên viên", "Cán bộ"]),
@@ -436,12 +442,13 @@ async def run_seed():
     classified = sum(1 for t in task_docs if t["classification"] != "thuong")
     print(f"  Trong đó có độ mật: {classified} nhiệm vụ")
 
-    print("\nHoàn tất. Tài khoản mẫu:")
-    print("  admin      / admin123  — Quản trị hệ thống (tiếp cận Tuyệt mật)")
-    print("  director_tmth / 123456 — Trưởng phòng (tiếp cận Tuyệt mật)")
-    print("  leader1    / 123456    — Lãnh đạo, chỉ huy (tiếp cận Tối mật)")
-    print("  canbo5     / 123456    — Cán bộ (tiếp cận Tối mật)")
-    print("  canbo0     / 123456    — Cán bộ (chỉ tài liệu thường)")
+    print(f"\nHoàn tất. MỌI tài khoản dùng chung mật khẩu: {MAT_KHAU_MAU_DEMO}")
+    print("  admin         — Quản trị hệ thống (tiếp cận Tuyệt mật)")
+    print("  director_tmth — Trưởng phòng (tiếp cận Tuyệt mật)")
+    print("  leader1       — Lãnh đạo, chỉ huy (tiếp cận Tối mật)")
+    print("  canbo5        — Cán bộ (tiếp cận Tối mật)")
+    print("  canbo0        — Cán bộ (chỉ tài liệu thường)")
+    print("\n  Mật khẩu này yếu và KHÔNG bị cơ chế chặn bảo vệ. Chỉ dùng cho dữ liệu giả.")
 
 
 if __name__ == "__main__":

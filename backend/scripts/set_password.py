@@ -58,13 +58,48 @@ async def doi_mat_khau(username: str, mat_khau: str) -> bool:
     return True
 
 
+async def doi_mat_khau_tat_ca(mat_khau: str) -> int:
+    """Đặt cùng một mật khẩu cho MỌI tài khoản. Chỉ dùng cho bản demo."""
+    users = await db.users.find({}, {"username": 1}).to_list(5000)
+    for u in users:
+        await db.users.update_one(
+            {"_id": u["_id"]},
+            {
+                "$set": {"hashed_password": get_password_hash(mat_khau)},
+                "$unset": {"active_refresh_token": ""},
+            },
+        )
+    print(f"Đã đặt lại mật khẩu cho {len(users)} tài khoản")
+    return len(users)
+
+
 async def main() -> int:
     p = argparse.ArgumentParser(description="Đặt mật khẩu mới cho một tài khoản")
-    p.add_argument("username", help="Tên đăng nhập, ví dụ: admin")
+    p.add_argument("username", nargs="?", help="Tên đăng nhập, ví dụ: admin")
     p.add_argument("--hoi", action="store_true", help="Tự nhập mật khẩu thay vì sinh ngẫu nhiên")
+    p.add_argument(
+        "--tat-ca", metavar="MAT_KHAU",
+        help="Đặt CÙNG mật khẩu này cho mọi tài khoản. Chỉ dùng cho bản demo.",
+    )
     args = p.parse_args()
 
     print(describe())
+
+    if args.tat_ca:
+        if args.tat_ca in MAT_KHAU_MAU:
+            print(
+                f"Mật khẩu {args.tat_ca!r} nằm trong danh sách mặc định bị chặn — "
+                "đặt xong sẽ không đăng nhập được.",
+                file=sys.stderr,
+            )
+            return 1
+        so_luong = await doi_mat_khau_tat_ca(args.tat_ca)
+        print(f"\n  Mọi tài khoản nay dùng mật khẩu: {args.tat_ca}")
+        print(f"  Áp dụng cho {so_luong} tài khoản, kể cả quản trị hệ thống.")
+        return 0
+
+    if not args.username:
+        p.error("cần nêu tên đăng nhập, hoặc dùng --tat-ca")
 
     if args.hoi:
         mat_khau = getpass.getpass("Mật khẩu mới: ")

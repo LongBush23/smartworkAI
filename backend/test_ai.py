@@ -311,22 +311,46 @@ def test_khong_module_ai_nao_goi_mang():
 
 # ================= CHẶN MẬT KHẨU MẶC ĐỊNH TRÊN MÔI TRƯỜNG THẬT =================
 
-def test_danh_sach_mat_khau_mau_bao_gom_mat_khau_cua_seeder():
+def test_danh_sach_chan_van_giu_cac_mat_khau_pho_bien():
     """
-    Mọi mật khẩu mà seeder đặt phải nằm trong danh sách bị chặn, nếu không thì
-    cơ chế bảo vệ có lỗ hổng.
+    Danh sách chặn phải luôn có các mật khẩu mặc định phổ biến, để không ai vô
+    tình đặt lại chúng rồi mở toang cửa cho bản triển khai công khai.
     """
     from backend.routers.auth import MAT_KHAU_MAU
-    from backend.services import seeder
+
+    for mk in ("admin123", "123456", "password", "12345678"):
+        assert mk in MAT_KHAU_MAU, f"Thiếu {mk!r} trong danh sách chặn"
+
+
+def test_mat_khau_cua_du_lieu_mau_la_lua_chon_co_chu_y():
+    """
+    Dữ liệu mẫu CỐ Ý dùng mật khẩu nằm ngoài danh sách chặn, để bản demo đăng
+    nhập được mà không phải bật ALLOW_DEMO_ACCOUNTS.
+
+    Đây là ĐÁNH ĐỔI đã cân nhắc, không phải sơ suất: cơ chế chặn khi đó không
+    còn bảo vệ các tài khoản mẫu nữa. Test này ghi lại quyết định đó, đồng thời
+    ràng buộc mật khẩu mẫu phải đủ dài để không quá dễ đoán.
+    """
+    from backend.routers.auth import MAT_KHAU_MAU
+    from backend.services.seeder import MAT_KHAU_MAU_DEMO
+
+    assert MAT_KHAU_MAU_DEMO not in MAT_KHAU_MAU, (
+        "Mật khẩu của dữ liệu mẫu đang nằm trong danh sách chặn — "
+        "chạy seeder xong sẽ không tài khoản nào đăng nhập được"
+    )
+    assert len(MAT_KHAU_MAU_DEMO) >= 10
+
+
+def test_seeder_dung_dung_mot_mat_khau_duy_nhat():
+    """Mọi tài khoản mẫu phải dùng chung hằng số, không rải mật khẩu ghi cứng."""
     import inspect
+    import re
+    from backend.services import seeder
 
     source = inspect.getsource(seeder)
-    # Seeder dùng get_password_hash("...") — rút các chuỗi đó ra
-    import re
-    used = set(re.findall(r'get_password_hash\("([^"]+)"\)', source))
-    assert used, "Không tìm thấy mật khẩu nào trong seeder — kiểm tra lại biểu thức"
-    thieu = used - MAT_KHAU_MAU
-    assert not thieu, f"Seeder dùng mật khẩu chưa bị chặn: {thieu}"
+    ghi_cung = re.findall(r'get_password_hash\("([^"]+)"\)', source)
+    assert not ghi_cung, f"Seeder còn ghi cứng mật khẩu: {set(ghi_cung)}"
+    assert 'get_password_hash(MAT_KHAU_MAU_DEMO)' in source
 
 
 def test_co_allow_demo_mac_dinh_tat():

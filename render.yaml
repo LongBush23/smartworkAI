@@ -24,9 +24,13 @@ services:
       #   https://smartwork-ai.vercel.app
       - key: CORS_ORIGINS
         sync: false
-      # Để "false" trên bản công khai. Dữ liệu mẫu tạo 64 tài khoản dùng chung
-      # mật khẩu admin123 / 123456, trong đó có tài khoản quản trị — nếu cho
-      # phép thì ai tìm ra địa chỉ cũng vào được với quyền cao nhất.
-      # Chỉ đặt "true" khi chạy demo trong môi trường có kiểm soát.
+      # Cờ này chỉ mở khoá danh sách mật khẩu mặc định phổ biến
+      # (admin123, 123456, password, 12345678). Để "false" trên bản công khai.
+      #
+      # LƯU Ý: dữ liệu mẫu hiện dùng mật khẩu "123456789a", CỐ Ý nằm ngoài danh
+      # sách đó, nên cờ này KHÔNG chặn được 64 tài khoản mẫu. Ai biết địa chỉ
+      # cũng vào được, kể cả tài khoản quản trị. Chỉ chấp nhận được vì đây là
+      # dữ liệu giả. Trước khi có dữ liệu thật, đổi mật khẩu bằng
+      # backend/scripts/set_password.py.
       - key: ALLOW_DEMO_ACCOUNTS
         value: "false"

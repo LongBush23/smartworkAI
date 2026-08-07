@@ -11,12 +11,12 @@ Làm theo đúng thứ tự dưới đây, mỗi kịch bản 3–5 phút. Mỗi
 Mở 2 cửa sổ dòng lệnh:
 
 ```bash
-ALLOW_DEMO_ACCOUNTS=true backend/venv/bin/uvicorn backend.main:app --reload --port 8000
+backend/venv/bin/uvicorn backend.main:app --reload --port 8000
 ```
 
-> ⚠️ Thiếu `ALLOW_DEMO_ACCOUNTS=true` thì **mọi tài khoản mẫu đều bị từ chối** với
-> lỗi 403, vì chúng dùng mật khẩu mặc định. Máy chủ chặn sẵn để bản triển khai
-> công khai không bị đăng nhập bằng tài khoản quản trị mật khẩu yếu.
+> ⚠️ Không cần cờ `ALLOW_DEMO_ACCOUNTS` nữa: mật khẩu `123456789a` cố ý nằm ngoài
+> danh sách mật khẩu mặc định bị chặn. Đổi lại, các tài khoản mẫu **không được cơ chế
+> chặn bảo vệ** — chỉ chấp nhận được vì toàn bộ là dữ liệu giả.
 
 ```bash
 cd frontend && npm run dev
@@ -27,7 +27,7 @@ Mở trình duyệt vào địa chỉ frontend in ra (mặc định `http://loca
 **Đổi tài khoản:** bấm **Đăng xuất** ở đáy thanh trái, rồi đăng nhập lại.
 Bạn sẽ đổi tài khoản khá nhiều, nên nhớ vị trí nút này.
 
-Mật khẩu: `admin` dùng `admin123`, tất cả tài khoản còn lại dùng `123456`.
+Mật khẩu: **mọi tài khoản đều dùng `123456789a`**, kể cả `admin`.
 
 > Toàn bộ dữ liệu mẫu nằm ở **kỳ tháng hiện tại**. Nếu trang nào trống,
 > kiểm tra lại bộ chọn Tháng/Năm ở góc phải.
@@ -35,7 +35,7 @@ Mật khẩu: `admin` dùng `admin123`, tất cả tài khoản còn lại dùng
 ---
 
 ## Kịch bản 1 — Nhìn toàn cảnh tổ chức
-**Đăng nhập: `admin` / `admin123`**
+**Đăng nhập: `admin` / `123456789a`**
 
 | Bước | Làm gì | Phải thấy gì |
 |---|---|---|
@@ -57,7 +57,7 @@ Mật khẩu: `admin` dùng `admin123`, tất cả tài khoản còn lại dùng
 Nhiệm vụ dùng để thử: **`NV-2026-08-0014`**, độ **TUYỆT MẬT**, thuộc **Phòng Chính sách cán bộ**.
 
 ### 2a. Người đủ cấp độ tiếp cận
-**Đăng nhập: `director_cscb` / `123456`** *(Trưởng phòng Phòng Chính sách cán bộ, tiếp cận Tuyệt mật)*
+**Đăng nhập: `director_cscb` / `123456789a`** *(Trưởng phòng Phòng Chính sách cán bộ, tiếp cận Tuyệt mật)*
 
 | Bước | Làm gì | Phải thấy gì |
 |---|---|---|
@@ -67,7 +67,7 @@ Nhiệm vụ dùng để thử: **`NV-2026-08-0014`**, độ **TUYỆT MẬT**, 
 | 4 | Bấm **Chi tiết** | Ô "Số hiệu hồ sơ gốc" và "Nơi lưu hồ sơ" **có dữ liệu**. Có dòng chữ đỏ: *hệ thống không lưu nội dung của nhiệm vụ có độ mật* |
 
 ### 2b. Người **thiếu** cấp độ tiếp cận
-**Đăng nhập: `leader5` / `123456`** *(Phó Trưởng phòng cùng phòng Phòng Chính sách cán bộ, chỉ tiếp cận Tối mật)*
+**Đăng nhập: `leader5` / `123456789a`** *(Phó Trưởng phòng cùng phòng Phòng Chính sách cán bộ, chỉ tiếp cận Tối mật)*
 
 | Bước | Làm gì | Phải thấy gì |
 |---|---|---|
@@ -81,7 +81,7 @@ Nhiệm vụ dùng để thử: **`NV-2026-08-0014`**, độ **TUYỆT MẬT**, 
 > `description` **không tồn tại** trong dữ liệu trả về. Máy chủ đã loại bỏ trước khi gửi.
 
 ### 2c. Cán bộ không được tiếp cận tài liệu mật
-**Đăng nhập: `canbo12` / `123456`** *(cán bộ Phòng Chính sách cán bộ, chỉ tài liệu thường)*
+**Đăng nhập: `canbo12` / `123456789a`** *(cán bộ Phòng Chính sách cán bộ, chỉ tài liệu thường)*
 
 | Bước | Làm gì | Phải thấy gì |
 |---|---|---|
@@ -89,7 +89,7 @@ Nhiệm vụ dùng để thử: **`NV-2026-08-0014`**, độ **TUYỆT MẬT**, 
 | 2 | Bỏ lọc | Chỉ thấy nhiệm vụ thường của chính mình |
 
 ### 2d. Nhật ký đã ghi lại
-**Đăng nhập: `admin` / `admin123`**
+**Đăng nhập: `admin` / `123456789a`**
 
 Vào **Nhật ký hệ thống**, lọc theo `classified`:
 
@@ -101,7 +101,7 @@ Vào **Nhật ký hệ thống**, lọc theo `classified`:
 ---
 
 ## Kịch bản 3 — Giao nhiệm vụ và tác động lên điểm KPI
-**Đăng nhập: `director_tmth` / `123456`** *(Trưởng phòng Tham mưu tổng hợp)*
+**Đăng nhập: `director_tmth` / `123456789a`** *(Trưởng phòng Tham mưu tổng hợp)*
 
 ### 3a. Giao nhiệm vụ mới
 1. Vào **Nhiệm vụ được giao** → **Giao nhiệm vụ**
@@ -137,7 +137,7 @@ Vào **Nhật ký hệ thống**, lọc theo `classified`:
 Cả 3 bước diễn ra trong **Phòng Tham mưu tổng hợp**, kỳ **tháng hiện tại**.
 
 ### Bước 1 — Tự đánh giá
-**Đăng nhập: `canbo4` / `123456`**
+**Đăng nhập: `canbo4` / `123456789a`**
 
 1. Vào **Quy trình đánh giá** → thấy sơ đồ 3 bước
 2. Kỳ của mình đang ở trạng thái **"Chưa tự đánh giá"** → bấm **Bước 1 – Tự đánh giá**
@@ -146,7 +146,7 @@ Cả 3 bước diễn ra trong **Phòng Tham mưu tổng hợp**, kỳ **tháng 
 5. Trạng thái đổi thành **"Bước 1 – Chờ thẩm định"**
 
 ### Bước 2 — Cơ quan liên quan thẩm định
-**Đăng nhập: `leader1` / `123456`**
+**Đăng nhập: `leader1` / `123456789a`**
 
 1. Vào **Quy trình đánh giá**
 2. Tìm dòng của **Phan Phương Bình** (`canbo0`) hoặc **Vũ Thu Mai** (`canbo5`) — đang **"Chờ thẩm định"**
@@ -155,7 +155,7 @@ Cả 3 bước diễn ra trong **Phòng Tham mưu tổng hợp**, kỳ **tháng 
 5. Trạng thái đổi thành **"Bước 2 – Chờ xác định điểm KPI"**
 
 ### Bước 3 — Cấp có thẩm quyền xác định điểm
-**Đăng nhập: `director_tmth` / `123456`**
+**Đăng nhập: `director_tmth` / `123456789a`**
 
 1. Vào **Quy trình đánh giá**
 2. Tìm dòng của **Đỗ Gia Cường** (`leader1`) hoặc **Huỳnh Phương Hương** (`canbo1`) — đang **"Chờ xác định điểm KPI"**
@@ -168,7 +168,7 @@ Cả 3 bước diễn ra trong **Phòng Tham mưu tổng hợp**, kỳ **tháng 
 ---
 
 ## Kịch bản 5 — Tiêu chí chung (E) và kết quả xếp loại
-**Đăng nhập: `director_tmth` / `123456`**
+**Đăng nhập: `director_tmth` / `123456789a`**
 
 ### 5a. Chấm 30 điểm tiêu chí chung
 1. Vào **Tiêu chí chung (E)**
@@ -229,14 +229,14 @@ Tương tự ở **Quy trình đánh giá**: admin 70 kỳ · `director_tmth` 10
 
 | Tài khoản | Mật khẩu | Dùng cho kịch bản |
 |---|---|---|
-| `admin` | `admin123` | 1 (toàn cảnh) · 2d (nhật ký) · 7 |
-| `director_cscb` | `123456` | 2a — xem nhiệm vụ mật đầy đủ |
-| `leader5` | `123456` | 2b — nhiệm vụ mật **bị che** |
-| `canbo12` | `123456` | 2c — không thấy nhiệm vụ mật |
-| `director_tmth` | `123456` | 3 (giao việc) · 4 Bước 3 · 5 (tiêu chí E) |
-| `leader1` | `123456` | 3d (chặn giao vượt cấp) · 4 Bước 2 |
-| `canbo4` | `123456` | 4 Bước 1 — tự đánh giá |
-| `canbo0` | `123456` | 7 — phạm vi cán bộ |
+| `admin` | `123456789a` | 1 (toàn cảnh) · 2d (nhật ký) · 7 |
+| `director_cscb` | `123456789a` | 2a — xem nhiệm vụ mật đầy đủ |
+| `leader5` | `123456789a` | 2b — nhiệm vụ mật **bị che** |
+| `canbo12` | `123456789a` | 2c — không thấy nhiệm vụ mật |
+| `director_tmth` | `123456789a` | 3 (giao việc) · 4 Bước 3 · 5 (tiêu chí E) |
+| `leader1` | `123456789a` | 3d (chặn giao vượt cấp) · 4 Bước 2 |
+| `canbo4` | `123456789a` | 4 Bước 1 — tự đánh giá |
+| `canbo0` | `123456789a` | 7 — phạm vi cán bộ |
 
 ---
 

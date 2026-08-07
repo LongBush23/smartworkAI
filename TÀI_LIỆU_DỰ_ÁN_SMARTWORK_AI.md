@@ -1012,6 +1012,11 @@ performance_analyzer = PerformanceAnalyzer()
 
 > **Tài liệu này được lập bởi nhóm phát triển SmartWork AI – Cuộc thi Ứng dụng AI tỉnh Đắk Lắk 2026.**
 
-Quản lý: director_khdt (Pass: 123456)
-Admin: admin (Pass: admin123)
-Nhân viên: user0 đến user19 (Pass: 123456)
+Tài khoản dữ liệu mẫu — **mọi tài khoản dùng chung mật khẩu `123456789a`**:
+
+- Quản trị hệ thống: `admin`
+- Trưởng phòng: `director_tmth`, `director_tkbt`, `director_cscb`, `director_dtbd`,
+  `director_xdpl`, `director_pc02`, `director_pa03`
+- Lãnh đạo, chỉ huy: `leader1` … `leader14`
+- Cán bộ, chiến sĩ: `canbo0` … `canbo41`
+

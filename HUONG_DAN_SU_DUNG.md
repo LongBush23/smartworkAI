@@ -9,8 +9,10 @@ trong đánh giá, xếp loại chất lượng đối với tập thể, cá nh
 
 ## 1. Tài khoản mẫu
 
-> ⚠️ Đây là tài khoản của **dữ liệu mẫu**, mật khẩu để trống nghĩa (`123456`) chỉ dùng để
-> chạy thử. Phải đổi toàn bộ trước khi triển khai thật.
+> ⚠️ **Toàn bộ 64 tài khoản đều dùng chung một mật khẩu: `123456789a`**
+>
+> Đây là mật khẩu của **dữ liệu mẫu**, cố ý đặt yếu để chạy thử cho nhanh.
+> Phải đổi toàn bộ trước khi triển khai thật — xem mục *Đặt mật khẩu mạnh* ở cuối tài liệu.
 
 Tổng cộng **64 tài khoản**: 1 quản trị · 7 Trưởng phòng · 14 lãnh đạo, chỉ huy · 42 cán bộ.
 
@@ -18,10 +20,10 @@ Tổng cộng **64 tài khoản**: 1 quản trị · 7 Trưởng phòng · 14 l�
 
 | Thẩm quyền | Tài khoản | Mật khẩu | Cấp độ tiếp cận | Làm được gì |
 |---|---|---|---|---|
-| Quản trị hệ thống | `admin` | `admin123` | Tuyệt mật | Toàn bộ dữ liệu, quản lý đơn vị, nhật ký hệ thống |
-| Trưởng phòng (người đứng đầu) | `director_*` (7) | `123456` | Tuyệt mật | Danh mục nhiệm vụ · **Bước 3** xác định điểm KPI · chấm tiêu chí chung (E) |
-| Lãnh đạo, chỉ huy | `leader1` … `leader14` | `123456` | Tối mật | Giao nhiệm vụ · nhắc nhở · yêu cầu chỉnh sửa · **Bước 2** thẩm định |
-| Cán bộ, chiến sĩ | `canbo0` … `canbo41` | `123456` | Thường / Mật / Tối mật | Nhiệm vụ của mình · **Bước 1** tự đánh giá |
+| Quản trị hệ thống | `admin` | `123456789a` | Tuyệt mật | Toàn bộ dữ liệu, quản lý đơn vị, nhật ký hệ thống |
+| Trưởng phòng (người đứng đầu) | `director_*` (7) | `123456789a` | Tuyệt mật | Danh mục nhiệm vụ · **Bước 3** xác định điểm KPI · chấm tiêu chí chung (E) |
+| Lãnh đạo, chỉ huy | `leader1` … `leader14` | `123456789a` | Tối mật | Giao nhiệm vụ · nhắc nhở · yêu cầu chỉnh sửa · **Bước 2** thẩm định |
+| Cán bộ, chiến sĩ | `canbo0` … `canbo41` | `123456789a` | Thường / Mật / Tối mật | Nhiệm vụ của mình · **Bước 1** tự đánh giá |
 
 > Lãnh đạo, chỉ huy (`director_*`, `leader*`) được tính KPI theo **04 tiêu chí**
 > (có thêm điểm D về kết quả lãnh đạo, chỉ đạo); tập thể và cán bộ không giữ chức vụ
@@ -384,14 +386,17 @@ Cấu hình biến môi trường:
 ```bash
 export MONGO_URI="mongodb://localhost:27017"
 export DB_NAME="smartwork"
-export ALLOW_DEMO_ACCOUNTS=true
 ```
 
-> ⚠️ **`ALLOW_DEMO_ACCOUNTS` bắt buộc phải có khi chạy thử.** Máy chủ mặc định
-> **từ chối** mọi lần đăng nhập bằng mật khẩu mặc định của dữ liệu mẫu
-> (`admin123`, `123456`) và trả về lỗi 403. Đây là biện pháp để bản triển khai
-> công khai không bị đăng nhập bằng tài khoản quản trị mật khẩu yếu.
-> **Tuyệt đối không bật cờ này trên bản chạy thật.**
+> ⚠️ **Mật khẩu của dữ liệu mẫu là `123456789a` — yếu, và không có cơ chế nào chặn nó.**
+>
+> Máy chủ chỉ từ chối một danh sách mật khẩu mặc định phổ biến (`admin123`, `123456`,
+> `password`, `12345678`) và trả về lỗi 403, trừ khi bật `ALLOW_DEMO_ACCOUNTS=true`.
+> Mật khẩu `123456789a` **cố ý nằm ngoài** danh sách đó để bản demo đăng nhập được ngay
+> mà không phải mở cờ. Đánh đổi: cơ chế chặn không còn bảo vệ các tài khoản mẫu nữa.
+>
+> Chỉ chấp nhận được vì toàn bộ dữ liệu là dữ liệu giả. **Trước khi đưa dữ liệu thật vào,
+> bắt buộc đổi mật khẩu** bằng `python -m backend.scripts.set_password <tài_khoản> --hoi`.
 
 Chạy máy chủ:
 
@@ -454,9 +459,8 @@ cd frontend && npm install && npm run dev
 VITE_API_URL = https://smartwork-backend.onrender.com/api
 ```
 
-**Tạo tài khoản đăng nhập được trên bản triển khai.** Vì `ALLOW_DEMO_ACCOUNTS`
-để `false`, mọi tài khoản mẫu đều bị từ chối. Chạy lệnh sau để đặt mật khẩu
-mạnh cho một tài khoản quản trị:
+**Đặt mật khẩu mạnh.** Bản triển khai hiện để mọi tài khoản mẫu dùng chung
+`123456789a` cho tiện demo. Trước khi đưa dữ liệu thật vào, đổi mật khẩu:
 
 ```bash
 python -m backend.scripts.set_password admin
@@ -464,6 +468,12 @@ python -m backend.scripts.set_password admin
 
 Lệnh sinh mật khẩu ngẫu nhiên và in ra một lần duy nhất. Dùng `--hoi` nếu muốn
 tự nhập mật khẩu.
+
+Nếu cần đặt lại mật khẩu chung cho toàn bộ tài khoản (chỉ dùng cho bản demo):
+
+```bash
+python -m backend.scripts.set_password --tat-ca 123456789a
+```
 
 ### 5.4. Kiểm thử
 

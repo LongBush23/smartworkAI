@@ -9,7 +9,7 @@ const Login = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
   const [shake, setShake] = useState(false);
 
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [password, setPassword] = useState('123456789a');
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
