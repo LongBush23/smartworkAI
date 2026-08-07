@@ -434,6 +434,37 @@ Sau khi chạy, dùng bảng tài khoản ở **mục 1** để đăng nhập.
 cd frontend && npm install && npm run dev
 ```
 
+### 5.3b. Triển khai lên máy chủ
+
+**Backend (Render)** — cấu hình theo `render.yaml`. Đặt các biến sau trong bảng
+điều khiển:
+
+| Biến | Giá trị |
+|---|---|
+| `MONGO_URI` | Chuỗi kết nối MongoDB |
+| `CORS_ORIGINS` | Địa chỉ giao diện, ví dụ `https://smartwork-ai.vercel.app` |
+| `ALLOW_DEMO_ACCOUNTS` | Để `false` |
+
+> Thiếu `CORS_ORIGINS` thì giao diện đã triển khai sẽ **bị chặn** khi gọi API,
+> vì mặc định máy chủ chỉ cho phép máy cục bộ.
+
+**Frontend (Vercel)** — đặt biến `VITE_API_URL` trỏ tới backend, kèm hậu tố `/api`:
+
+```
+VITE_API_URL = https://smartwork-backend.onrender.com/api
+```
+
+**Tạo tài khoản đăng nhập được trên bản triển khai.** Vì `ALLOW_DEMO_ACCOUNTS`
+để `false`, mọi tài khoản mẫu đều bị từ chối. Chạy lệnh sau để đặt mật khẩu
+mạnh cho một tài khoản quản trị:
+
+```bash
+python -m backend.scripts.set_password admin
+```
+
+Lệnh sinh mật khẩu ngẫu nhiên và in ra một lần duy nhất. Dùng `--hoi` nếu muốn
+tự nhập mật khẩu.
+
 ### 5.4. Kiểm thử
 
 ```bash
