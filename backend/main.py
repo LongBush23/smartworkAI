@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,10 +11,23 @@ app = FastAPI(
     description="Theo Hướng dẫn số 20-HD/ĐUCA ngày 08/6/2026 của Ban Thường vụ Đảng ủy Công an Trung ương",
 )
 
+# Nguồn được phép gọi API. Đặt biến môi trường CORS_ORIGINS khi triển khai,
+# ví dụ: CORS_ORIGINS="https://smartwork-ai.vercel.app"
+# Mặc định chỉ mở cho máy cục bộ — không để lộ API cho mọi trang web.
+_origins_env = os.getenv("CORS_ORIGINS", "").strip()
+CORS_ORIGINS = (
+    [o.strip() for o in _origins_env.split(",") if o.strip()]
+    if _origins_env
+    else ["http://localhost:5173", "http://localhost:5199"]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins for Vercel deployment
-    allow_credentials=True,
+    allow_origins=CORS_ORIGINS,
+    # Hệ thống xác thực bằng thẻ Bearer trong header, không dùng cookie phiên,
+    # nên không cần allow_credentials. Bật cùng allow_origins="*" còn là cấu hình
+    # không hợp lệ theo chuẩn CORS và bị trình duyệt từ chối.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -50,10 +66,18 @@ async def get_audit_logs(
         log["_id"] = str(log["_id"])
     return logs
 
-@app.on_event("startup")
-async def startup_event():
-    print("Backend started")
+@app.get("/health", tags=["health"])
+async def health():
+    """Điểm kiểm tra sống cho nền tảng triển khai."""
+    return {"status": "ok"}
 
 
-# Mount frontend
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+# Phục vụ giao diện đã build, CHỈ KHI có sẵn trong cùng máy chủ.
+#
+# Bình thường giao diện được triển khai riêng (Vercel) nên khối này không chạy.
+# Trước đây chỗ này mount thẳng thư mục "frontend" — tức là mã nguồn chưa build,
+# khiến trang chủ trả về index.html của Vite trỏ tới /src/main.tsx và hỏng hoàn
+# toàn trên môi trường thật. Nay chỉ mount đúng thư mục build.
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if _FRONTEND_DIST.is_dir() and (_FRONTEND_DIST / "index.html").exists():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")

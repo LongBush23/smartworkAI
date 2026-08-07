@@ -3,16 +3,24 @@ services:
     name: smartwork-backend
     plan: free
     env: python
+    healthCheckPath: /health
     buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.2
+      # Chuỗi kết nối MongoDB — đặt thủ công trong bảng điều khiển Render,
+      # không ghi vào tệp này
       - key: MONGO_URI
         sync: false
       - key: DB_NAME
         value: smartwork
+      # Khoá ký thẻ truy cập. Render tự sinh; đổi khoá sẽ làm mọi phiên đăng
+      # nhập hiện có hết hiệu lực
       - key: SECRET_KEY
         generateValue: true
-      - key: GEMINI_API_KEY
+      # Địa chỉ giao diện được phép gọi API. Bắt buộc đặt sau khi có tên miền
+      # thật của bản triển khai giao diện, ví dụ:
+      #   https://smartwork-ai.vercel.app
+      - key: CORS_ORIGINS
         sync: false

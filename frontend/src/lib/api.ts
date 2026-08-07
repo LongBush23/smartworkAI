@@ -1,14 +1,18 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
-});
+/**
+ * Địa chỉ máy chủ API.
+ *
+ * Khi triển khai, đặt biến môi trường VITE_API_URL trỏ tới backend
+ * (ví dụ https://smartwork-backend.onrender.com/api). Mặc định dùng máy cục bộ
+ * để chạy thử.
+ */
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-// For now, bypass auth or hardcode a fake token if needed, 
-// since auth is not fully migrated to React yet.
-// We will assume the backend doesn't strictly block us or we can provide a mock token.
-// Actually, earlier the backend required auth.
-// Let's add an interceptor to attach token from localStorage.
+const api = axios.create({ baseURL: API_BASE_URL });
+
+// Gắn thẻ truy cập vào mọi yêu cầu
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -72,7 +76,10 @@ api.interceptors.response.use(
       }
 
       try {
-        const { data } = await axios.post('http://localhost:8000/api/auth/refresh', {
+        // Phải dùng cùng địa chỉ với các yêu cầu khác. Trước đây chỗ này ghi cứng
+        // localhost nên khi triển khai thật, việc gia hạn phiên luôn thất bại và
+        // cán bộ bị đăng xuất sau 15 phút.
+        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
           refresh_token: refreshToken
         });
         
