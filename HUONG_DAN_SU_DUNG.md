@@ -444,14 +444,34 @@ cd frontend && npm install && npm run dev
 **Backend (Render)** — cấu hình theo `render.yaml`. Đặt các biến sau trong bảng
 điều khiển:
 
-| Biến | Giá trị |
-|---|---|
-| `MONGO_URI` | Chuỗi kết nối MongoDB |
-| `CORS_ORIGINS` | Địa chỉ giao diện, ví dụ `https://smartwork-ai.vercel.app` |
-| `ALLOW_DEMO_ACCOUNTS` | Để `false` |
+| Biến | Bắt buộc | Giá trị |
+|---|---|---|
+| `MONGO_URI` | ✅ | Chuỗi kết nối MongoDB |
+| `CORS_ORIGINS` | — | Chỉ cần khi dùng **tên miền riêng**, ví dụ `https://kpi.bocongan.gov.vn` |
+| `CORS_ORIGIN_REGEX` | — | Ghi đè mẫu khớp tên miền mặc định |
+| `ALLOW_DEMO_ACCOUNTS` | — | Để `false` |
 
-> Thiếu `CORS_ORIGINS` thì giao diện đã triển khai sẽ **bị chặn** khi gọi API,
-> vì mặc định máy chủ chỉ cho phép máy cục bộ.
+**Về CORS.** Trình duyệt chỉ cho giao diện gọi API nếu máy chủ khai báo tên miền
+của giao diện là hợp lệ. Máy chủ cho phép sẵn:
+
+- máy cục bộ: `http://localhost:5173`, `http://localhost:5199`, `http://127.0.0.1:5173`
+- mọi bản triển khai Vercel của dự án, khớp mẫu `^https://smartwork-ai[a-z0-9-]*\.vercel\.app$`
+  — kể cả tên miền xem trước Vercel sinh ra sau mỗi lần đẩy mã
+
+Nhờ vậy **quên đặt `CORS_ORIGINS` không còn làm giao diện chết**. Giá trị đặt trong
+`CORS_ORIGINS` được **cộng thêm** vào danh sách trên chứ không thay thế, nên đặt tên
+miền thật rồi thì `npm run dev` ở máy vẫn chạy bình thường.
+
+> Mở sẵn như vậy có an toàn không? Có. Hệ thống xác thực bằng thẻ Bearer lưu trong
+> `localStorage`, không dùng cookie phiên, và `allow_credentials=False`. Một trang web
+> lạ không đọc được `localStorage` của tên miền khác, nên dù được phép gọi API nó vẫn
+> không có thẻ để gọi bất kỳ endpoint nào cần đăng nhập.
+
+Log lúc khởi động in ra đúng danh sách đang áp dụng:
+
+```
+CORS cho phép: http://localhost:5173, ... · khớp mẫu: ^https://smartwork-ai[a-z0-9-]*\.vercel\.app$
+```
 
 **Frontend (Vercel)** — đặt biến `VITE_API_URL` trỏ tới backend, kèm hậu tố `/api`:
 
@@ -482,5 +502,63 @@ pip install -r backend/requirements-dev.txt
 pytest -v
 ```
 
-47 test kiểm chứng công thức tính điểm, trong đó có test tái tạo đúng **ví dụ mẫu tại
-Phụ lục** (đồng chí A tháng 6/2026: KPI = 97,97; tổng điểm xếp loại = 98,579).
+93 test kiểm chứng công thức tính điểm, các mô hình AI, ràng buộc bảo mật và cấu hình
+triển khai — trong đó có test tái tạo đúng **ví dụ mẫu tại Phụ lục** (đồng chí A tháng
+6/2026: KPI = 97,97; tổng điểm xếp loại = 98,579).
+
+---
+
+## 6. Xử lý sự cố đăng nhập
+
+Trang đăng nhập phân biệt rõ ba nguyên nhân. Đọc đúng thông báo là biết phải sửa ở đâu.
+
+### 6.1. *"Không kết nối được máy chủ…"*
+
+Trình duyệt không gọi tới được API. **Không phải sai mật khẩu.** Hai nguyên nhân:
+
+**a) Máy chủ chưa chạy.** Mở thẳng địa chỉ backend kèm `/health`:
+
+```bash
+curl https://smartwork-backend-ctda.onrender.com/health
+```
+
+Phải trả về `{"status":"ok"}`. Nếu treo lâu rồi mới trả lời, đó là Render đánh thức
+dịch vụ ở gói miễn phí — chờ khoảng 50 giây rồi thử lại.
+
+**b) Tên miền giao diện chưa được phép gọi API (CORS).** Kiểm tra bằng lệnh sau, thay
+tên miền giao diện của bạn vào `Origin`:
+
+```bash
+curl -i -X OPTIONS https://smartwork-backend-ctda.onrender.com/api/auth/login -H "Origin: https://smartwork-ai-3u7e.vercel.app" -H "Access-Control-Request-Method: POST"
+```
+
+| Kết quả | Nghĩa là |
+|---|---|
+| `200` kèm dòng `access-control-allow-origin: …` | Đúng, không phải lỗi CORS |
+| `400 Disallowed CORS origin` | Tên miền chưa được phép — thêm vào `CORS_ORIGINS` trên Render rồi khởi động lại dịch vụ |
+
+Tên miền Vercel của dự án đã được cho phép sẵn (xem mục 5.3b), nên lỗi này chỉ xảy ra
+với tên miền riêng.
+
+### 6.2. *"Sai tài khoản hoặc mật khẩu"*
+
+Máy chủ **có** trả lời, chỉ là thông tin đăng nhập không khớp. Mật khẩu của mọi tài
+khoản dữ liệu mẫu là `123456789a`. Nếu quên mật khẩu tài khoản thật:
+
+```bash
+python -m backend.scripts.set_password admin --hoi
+```
+
+### 6.3. *"Tài khoản đang dùng mật khẩu mặc định…"*
+
+Lỗi 403, không phải 401 — mật khẩu **đúng** nhưng nằm trong danh sách mặc định bị chặn
+(`admin123`, `123456`, `password`, `12345678`). Đặt lại mật khẩu:
+
+```bash
+python -m backend.scripts.set_password --tat-ca 123456789a
+```
+
+### 6.4. Đăng nhập được nhưng trang trống
+
+Không phải lỗi kết nối. Bộ chọn **Tháng/Năm** ở góc phải đang ở kỳ không có dữ liệu —
+dữ liệu mẫu nằm ở tháng hiện tại. Nếu vẫn trống thì chạy lại seeder.

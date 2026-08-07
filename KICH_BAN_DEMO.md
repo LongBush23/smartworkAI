@@ -245,6 +245,8 @@ Tương tự ở **Quy trình đánh giá**: admin 70 kỳ · `director_tmth` 10
 | Hiện tượng | Nguyên nhân thường gặp |
 |---|---|
 | Trang trắng, không có dữ liệu | Bộ chọn **Tháng/Năm** đang ở kỳ không có dữ liệu — chọn lại tháng hiện tại |
-| Đăng nhập không được | Backend chưa chạy. Kiểm tra `http://localhost:8000/docs` |
+| *"Không kết nối được máy chủ"* | Trình duyệt không gọi tới được API. Hai nguyên nhân: **(1)** backend chưa chạy — mở `http://localhost:8000/health`, phải thấy `{"status":"ok"}`; **(2)** tên miền giao diện chưa được phép gọi API — xem log khởi động backend dòng `CORS cho phép: …`, nếu thiếu thì thêm vào biến `CORS_ORIGINS` |
+| *"Sai tài khoản hoặc mật khẩu"* | Máy chủ có trả lời, nên chỉ là gõ sai. Mật khẩu của mọi tài khoản là `123456789a` |
+| *"Tài khoản đang dùng mật khẩu mặc định"* | Tài khoản đó còn mật khẩu cũ (`admin123`/`123456`). Chạy `python -m backend.scripts.set_password --tat-ca 123456789a` |
 | Không thấy nút Bước 2 / Bước 3 | Đúng quy định — Bước 2 cần lãnh đạo chỉ huy, Bước 3 cần Trưởng phòng |
 | Muốn làm lại từ đầu | Chạy lại `python -m backend.services.seeder` (⚠️ xoá sạch dữ liệu hiện có) |

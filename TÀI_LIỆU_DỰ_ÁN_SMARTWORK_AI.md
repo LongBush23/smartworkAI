@@ -853,6 +853,22 @@ Nhấn `Ctrl + C` trong Terminal.
 - Tự động khởi tạo database khi server start (`@app.on_event("startup")`).
 - Phục vụ frontend (HTML/CSS/JS) qua StaticFiles.
 - 16 REST API endpoints cho CRUD + AI.
+- Endpoint `/health` để nền tảng triển khai và người vận hành kiểm tra máy chủ sống.
+
+**Cấu hình CORS.** Nguồn được phép gọi API do `nguon_cors()` trong `backend/config.py`
+quyết định, gồm ba phần:
+
+| Nguồn | Nội dung |
+| --- | --- |
+| Máy cục bộ (cố định) | `http://localhost:5173`, `http://localhost:5199`, `http://127.0.0.1:5173` |
+| Mẫu tên miền triển khai | `^https://smartwork-ai[a-z0-9-]*\.vercel\.app$` — phủ cả tên miền xem trước Vercel sinh sau mỗi lần đẩy mã |
+| Biến `CORS_ORIGINS` | Cộng thêm tên miền riêng, cách nhau bằng dấu phẩy |
+
+Thiết kế cho phép sẵn tên miền triển khai vì trước đó việc quên đặt `CORS_ORIGINS` làm
+toàn bộ giao diện không đăng nhập được, mà thông báo lỗi của trình duyệt lại rất khó
+truy nguyên. `allow_credentials` giữ nguyên `False`: hệ thống xác thực bằng thẻ Bearer
+trong `localStorage` chứ không dùng cookie phiên, nên trang web lạ dù được gọi API cũng
+không lấy được thẻ. Ràng buộc này có test khoá lại trong `backend/test_ai.py`.
 
 **Các endpoint quan trọng:**
 

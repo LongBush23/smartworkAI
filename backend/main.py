@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from backend.config import nguon_cors
 from backend.routers import auth, departments, employees, tasks, notifications, comments, kpi, ai
 
 app = FastAPI(
@@ -11,34 +12,23 @@ app = FastAPI(
     description="Theo Hướng dẫn số 20-HD/ĐUCA ngày 08/6/2026 của Ban Thường vụ Đảng ủy Công an Trung ương",
 )
 
-# Nguồn được phép gọi API. Đặt biến môi trường CORS_ORIGINS khi triển khai,
-# ví dụ: CORS_ORIGINS="https://smartwork-ai.vercel.app"
-# Mặc định chỉ mở cho máy cục bộ — không để lộ API cho mọi trang web.
-_origins_env = os.getenv("CORS_ORIGINS", "").strip()
-CORS_ORIGINS = (
-    [o.strip() for o in _origins_env.split(",") if o.strip()]
-    if _origins_env
-    else ["http://localhost:5173", "http://localhost:5199"]
-)
+# Nguồn được phép gọi API: máy cục bộ + bản triển khai Vercel của dự án (khớp
+# bằng biểu thức chính quy), cộng thêm những gì đặt trong CORS_ORIGINS.
+# Chi tiết và lý do vì sao mở sẵn vẫn an toàn: xem backend/config.py.
+CORS_ORIGINS, CORS_ORIGIN_REGEX = nguon_cors()
 
-# Chạy trên nền tảng triển khai mà quên đặt CORS_ORIGINS là lỗi rất khó đoán:
-# giao diện chỉ báo "CORS policy" chung chung, không ai biết nguyên nhân.
-# In cảnh báo thật rõ vào log khởi động.
-_ON_PLATFORM = any(os.getenv(v) for v in ("RENDER", "RAILWAY_ENVIRONMENT", "FLY_APP_NAME", "DYNO"))
-if _ON_PLATFORM and not _origins_env:
-    print(
-        "\n" + "=" * 70 +
-        "\nCẢNH BÁO: Chưa đặt biến môi trường CORS_ORIGINS."
-        "\nMáy chủ đang chỉ cho phép localhost, nên giao diện đã triển khai SẼ BỊ"
-        "\nCHẶN khi gọi API. Đặt CORS_ORIGINS bằng địa chỉ giao diện, ví dụ:"
-        "\n    CORS_ORIGINS=https://ten-mien-cua-ban.vercel.app"
-        "\n" + "=" * 70 + "\n",
-        flush=True,
-    )
+# In ra lúc khởi động. Trước đây quên đặt CORS_ORIGINS là giao diện chết hẳn mà
+# chỉ báo "CORS policy" chung chung; giờ mặc định đã đủ chạy, nhưng vẫn in để
+# khi dùng tên miền khác thì nhìn log là biết ngay vì sao bị chặn.
+print(
+    f"CORS cho phép: {', '.join(CORS_ORIGINS)} · khớp mẫu: {CORS_ORIGIN_REGEX}",
+    flush=True,
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     # Hệ thống xác thực bằng thẻ Bearer trong header, không dùng cookie phiên,
     # nên không cần allow_credentials. Bật cùng allow_origins="*" còn là cấu hình
     # không hợp lệ theo chuẩn CORS và bị trình duyệt từ chối.

@@ -38,6 +38,44 @@ def _flag(name: str, default: bool = False) -> bool:
 ALLOW_DEMO_ACCOUNTS = _flag("ALLOW_DEMO_ACCOUNTS", default=False)
 
 
+# --------------------------------------------------------------------------
+# CORS — nguồn được phép gọi API
+# --------------------------------------------------------------------------
+# Máy cục bộ, luôn được phép để chạy `npm run dev` không phải cấu hình gì thêm.
+NGUON_CUC_BO = ["http://localhost:5173", "http://localhost:5199", "http://127.0.0.1:5173"]
+
+# Bản triển khai giao diện của dự án này trên Vercel. Mỗi lần đẩy mã, Vercel
+# sinh thêm một tên miền xem trước dạng smartwork-ai-git-<nhánh>-<tài khoản>,
+# nên phải khớp bằng biểu thức chính quy thay vì liệt kê từng cái.
+#
+# Vì sao mở sẵn mà vẫn an toàn: hệ thống xác thực bằng thẻ Bearer lưu trong
+# localStorage, KHÔNG dùng cookie phiên, và allow_credentials=False. Một trang
+# web lạ không đọc được localStorage của tên miền khác, nên dù được phép gọi
+# API nó vẫn không có thẻ để gọi endpoint cần đăng nhập.
+NGUON_TRIEN_KHAI_REGEX = r"^https://smartwork-ai[a-z0-9-]*\.vercel\.app$"
+
+
+def _danh_sach(name: str) -> list[str]:
+    raw = os.getenv(name, "").strip()
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+def nguon_cors() -> tuple[list[str], str]:
+    """
+    Trả về (danh sách nguồn, biểu thức chính quy) cho CORSMiddleware.
+
+    CORS_ORIGINS **bổ sung** vào danh sách mặc định chứ không thay thế, để đặt
+    tên miền thật không vô tình làm hỏng môi trường phát triển cục bộ.
+    CORS_ORIGIN_REGEX ghi đè biểu thức mặc định nếu được đặt.
+    """
+    nguon = list(NGUON_CUC_BO)
+    for o in _danh_sach("CORS_ORIGINS"):
+        if o not in nguon:
+            nguon.append(o)
+    regex = os.getenv("CORS_ORIGIN_REGEX", "").strip() or NGUON_TRIEN_KHAI_REGEX
+    return nguon, regex
+
+
 def describe() -> str:
     """Mô tả cấu hình đang dùng, che kín thông tin bí mật."""
     if not MONGO_URI:

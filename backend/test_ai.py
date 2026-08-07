@@ -358,3 +358,93 @@ def test_co_allow_demo_mac_dinh_tat():
     from backend.config import _flag
     assert _flag("BIEN_KHONG_TON_TAI_XYZ", default=False) is False
     assert _flag("BIEN_KHONG_TON_TAI_XYZ", default=True) is True
+
+
+# ---------------------------------------------------------------------------
+# CORS — nguồn được phép gọi API
+#
+# Đây là lỗi đã hai lần làm bản triển khai không đăng nhập được: quên đặt
+# CORS_ORIGINS trên Render thì trình duyệt chặn mọi lời gọi, mà giao diện chỉ
+# báo "CORS policy" chung chung. Khoá lại bằng test.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def moi_truong_sach(monkeypatch):
+    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    monkeypatch.delenv("CORS_ORIGIN_REGEX", raising=False)
+    return monkeypatch
+
+
+def _duoc_phep(nguon: str, danh_sach: list, regex: str) -> bool:
+    """Mô phỏng cách CORSMiddleware của Starlette quyết định."""
+    import re
+    return nguon in danh_sach or bool(re.fullmatch(regex, nguon))
+
+
+def test_ban_trien_khai_vercel_duoc_phep_du_khong_dat_bien_moi_truong(moi_truong_sach):
+    """Không đặt CORS_ORIGINS thì giao diện đã triển khai VẪN phải gọi được API."""
+    from backend.config import nguon_cors
+
+    danh_sach, regex = nguon_cors()
+    assert _duoc_phep("https://smartwork-ai-3u7e.vercel.app", danh_sach, regex)
+
+
+def test_ten_mien_xem_truoc_cua_vercel_cung_duoc_phep(moi_truong_sach):
+    """Mỗi lần đẩy mã Vercel sinh một tên miền mới — không thể liệt kê từng cái."""
+    from backend.config import nguon_cors
+
+    danh_sach, regex = nguon_cors()
+    for ten_mien in (
+        "https://smartwork-ai.vercel.app",
+        "https://smartwork-ai-git-main-longbush23.vercel.app",
+        "https://smartwork-ai-3u7e.vercel.app",
+    ):
+        assert _duoc_phep(ten_mien, danh_sach, regex), ten_mien
+
+
+def test_trang_web_la_khong_duoc_phep(moi_truong_sach):
+    """Mở cho Vercel của dự án, KHÔNG mở cho cả thiên hạ."""
+    from backend.config import nguon_cors
+
+    danh_sach, regex = nguon_cors()
+    for ten_mien in (
+        "https://ke-gian.com",
+        "https://smartwork-ai.vercel.app.ke-gian.com",  # hậu tố giả mạo
+        "http://smartwork-ai.vercel.app",               # không phải https
+        "https://vercel.app",
+    ):
+        assert not _duoc_phep(ten_mien, danh_sach, regex), ten_mien
+
+
+def test_may_cuc_bo_luon_duoc_phep_ke_ca_khi_da_dat_ten_mien_that(moi_truong_sach):
+    """
+    CORS_ORIGINS bổ sung chứ không thay thế: đặt tên miền thật rồi mà
+    `npm run dev` ở máy lại hỏng thì rất mất thời gian mới tìm ra.
+    """
+    from backend.config import nguon_cors
+
+    moi_truong_sach.setenv("CORS_ORIGINS", "https://kpi.bocongan.gov.vn")
+    danh_sach, regex = nguon_cors()
+    assert "https://kpi.bocongan.gov.vn" in danh_sach
+    assert "http://localhost:5173" in danh_sach
+
+
+def test_cors_origins_nhan_nhieu_dia_chi_cach_nhau_dau_phay(moi_truong_sach):
+    from backend.config import nguon_cors
+
+    moi_truong_sach.setenv("CORS_ORIGINS", " https://a.gov.vn , https://b.gov.vn ")
+    danh_sach, _ = nguon_cors()
+    assert "https://a.gov.vn" in danh_sach and "https://b.gov.vn" in danh_sach
+
+
+def test_khong_dung_allow_credentials_cung_voi_cors_mo_rong():
+    """
+    Mở CORS theo mẫu mà bật allow_credentials là để lộ phiên đăng nhập.
+    Hệ thống dùng thẻ Bearer nên phải giữ allow_credentials=False.
+    """
+    import inspect
+    from backend import main
+
+    source = inspect.getsource(main)
+    assert "allow_credentials=False" in source
+    assert "allow_credentials=True" not in source

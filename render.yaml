@@ -19,9 +19,14 @@ services:
       # nhập hiện có hết hiệu lực
       - key: SECRET_KEY
         generateValue: true
-      # Địa chỉ giao diện được phép gọi API. Bắt buộc đặt sau khi có tên miền
-      # thật của bản triển khai giao diện, ví dụ:
-      #   https://smartwork-ai.vercel.app
+      # Địa chỉ giao diện được phép gọi API, cách nhau bằng dấu phẩy.
+      #
+      # KHÔNG BẮT BUỘC: máy chủ đã cho phép sẵn máy cục bộ và mọi bản triển khai
+      # Vercel của dự án (khớp mẫu ^https://smartwork-ai[a-z0-9-]*\.vercel\.app$),
+      # nên quên đặt biến này KHÔNG còn làm giao diện chết như trước.
+      # Chỉ cần đặt khi dùng tên miền riêng, ví dụ:
+      #   https://kpi.bocongan.gov.vn
+      # Giá trị đặt ở đây được CỘNG THÊM vào danh sách mặc định.
       - key: CORS_ORIGINS
         sync: false
       # Cờ này chỉ mở khoá danh sách mật khẩu mặc định phổ biến
