@@ -21,6 +21,21 @@ CORS_ORIGINS = (
     else ["http://localhost:5173", "http://localhost:5199"]
 )
 
+# Chạy trên nền tảng triển khai mà quên đặt CORS_ORIGINS là lỗi rất khó đoán:
+# giao diện chỉ báo "CORS policy" chung chung, không ai biết nguyên nhân.
+# In cảnh báo thật rõ vào log khởi động.
+_ON_PLATFORM = any(os.getenv(v) for v in ("RENDER", "RAILWAY_ENVIRONMENT", "FLY_APP_NAME", "DYNO"))
+if _ON_PLATFORM and not _origins_env:
+    print(
+        "\n" + "=" * 70 +
+        "\nCẢNH BÁO: Chưa đặt biến môi trường CORS_ORIGINS."
+        "\nMáy chủ đang chỉ cho phép localhost, nên giao diện đã triển khai SẼ BỊ"
+        "\nCHẶN khi gọi API. Đặt CORS_ORIGINS bằng địa chỉ giao diện, ví dụ:"
+        "\n    CORS_ORIGINS=https://ten-mien-cua-ban.vercel.app"
+        "\n" + "=" * 70 + "\n",
+        flush=True,
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
