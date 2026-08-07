@@ -307,3 +307,30 @@ def test_khong_module_ai_nao_goi_mang():
         for lib in cam:
             assert f"import {lib}" not in source, f"{path.name} import {lib}"
             assert f"from {lib}" not in source, f"{path.name} import từ {lib}"
+
+
+# ================= CHẶN MẬT KHẨU MẶC ĐỊNH TRÊN MÔI TRƯỜNG THẬT =================
+
+def test_danh_sach_mat_khau_mau_bao_gom_mat_khau_cua_seeder():
+    """
+    Mọi mật khẩu mà seeder đặt phải nằm trong danh sách bị chặn, nếu không thì
+    cơ chế bảo vệ có lỗ hổng.
+    """
+    from backend.routers.auth import MAT_KHAU_MAU
+    from backend.services import seeder
+    import inspect
+
+    source = inspect.getsource(seeder)
+    # Seeder dùng get_password_hash("...") — rút các chuỗi đó ra
+    import re
+    used = set(re.findall(r'get_password_hash\("([^"]+)"\)', source))
+    assert used, "Không tìm thấy mật khẩu nào trong seeder — kiểm tra lại biểu thức"
+    thieu = used - MAT_KHAU_MAU
+    assert not thieu, f"Seeder dùng mật khẩu chưa bị chặn: {thieu}"
+
+
+def test_co_allow_demo_mac_dinh_tat():
+    """Mặc định phải TẮT — an toàn khi ai đó quên đặt biến môi trường."""
+    from backend.config import _flag
+    assert _flag("BIEN_KHONG_TON_TAI_XYZ", default=False) is False
+    assert _flag("BIEN_KHONG_TON_TAI_XYZ", default=True) is True

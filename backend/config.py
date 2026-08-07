@@ -21,6 +21,23 @@ DB_NAME = os.getenv("DB_NAME", "smartwork")
 SECRET_KEY = os.getenv("SECRET_KEY", "smartwork_super_secret_key")
 
 
+def _flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on", "co", "có")
+
+
+# Cho phép đăng nhập bằng các mật khẩu mặc định của dữ liệu mẫu
+# (admin123, 123456...). MẶC ĐỊNH TẮT.
+#
+# Dữ liệu mẫu tạo 64 tài khoản dùng mật khẩu chung, trong đó có tài khoản quản
+# trị. Nếu bản triển khai công khai vẫn nhận các mật khẩu này thì bất kỳ ai tìm
+# ra địa chỉ đều vào được với quyền cao nhất. Chỉ bật cờ này khi chạy demo trong
+# môi trường có kiểm soát.
+ALLOW_DEMO_ACCOUNTS = _flag("ALLOW_DEMO_ACCOUNTS", default=False)
+
+
 def describe() -> str:
     """Mô tả cấu hình đang dùng, che kín thông tin bí mật."""
     if not MONGO_URI:

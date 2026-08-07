@@ -24,3 +24,9 @@ services:
       #   https://smartwork-ai.vercel.app
       - key: CORS_ORIGINS
         sync: false
+      # Để "false" trên bản công khai. Dữ liệu mẫu tạo 64 tài khoản dùng chung
+      # mật khẩu admin123 / 123456, trong đó có tài khoản quản trị — nếu cho
+      # phép thì ai tìm ra địa chỉ cũng vào được với quyền cao nhất.
+      # Chỉ đặt "true" khi chạy demo trong môi trường có kiểm soát.
+      - key: ALLOW_DEMO_ACCOUNTS
+        value: "false"

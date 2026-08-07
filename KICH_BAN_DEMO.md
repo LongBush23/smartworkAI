@@ -11,8 +11,12 @@ Làm theo đúng thứ tự dưới đây, mỗi kịch bản 3–5 phút. Mỗi
 Mở 2 cửa sổ dòng lệnh:
 
 ```bash
-backend/venv/bin/uvicorn backend.main:app --reload --port 8000
+ALLOW_DEMO_ACCOUNTS=true backend/venv/bin/uvicorn backend.main:app --reload --port 8000
 ```
+
+> ⚠️ Thiếu `ALLOW_DEMO_ACCOUNTS=true` thì **mọi tài khoản mẫu đều bị từ chối** với
+> lỗi 403, vì chúng dùng mật khẩu mặc định. Máy chủ chặn sẵn để bản triển khai
+> công khai không bị đăng nhập bằng tài khoản quản trị mật khẩu yếu.
 
 ```bash
 cd frontend && npm run dev

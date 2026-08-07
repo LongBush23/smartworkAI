@@ -384,7 +384,14 @@ Cấu hình biến môi trường:
 ```bash
 export MONGO_URI="mongodb://localhost:27017"
 export DB_NAME="smartwork"
+export ALLOW_DEMO_ACCOUNTS=true
 ```
+
+> ⚠️ **`ALLOW_DEMO_ACCOUNTS` bắt buộc phải có khi chạy thử.** Máy chủ mặc định
+> **từ chối** mọi lần đăng nhập bằng mật khẩu mặc định của dữ liệu mẫu
+> (`admin123`, `123456`) và trả về lỗi 403. Đây là biện pháp để bản triển khai
+> công khai không bị đăng nhập bằng tài khoản quản trị mật khẩu yếu.
+> **Tuyệt đối không bật cờ này trên bản chạy thật.**
 
 Chạy máy chủ:
 

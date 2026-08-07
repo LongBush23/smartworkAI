@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from backend.config import ALLOW_DEMO_ACCOUNTS
 from backend.database import db
 from backend.security import verify_password, create_access_token, get_current_user, get_password_hash
 from backend.models.schemas import UserCreate, UserResponse, PasswordChange, ProfileUpdate
@@ -41,6 +42,11 @@ async def register(user: UserCreate):
     await db.users.insert_one(new_user)
     return {"message": "User created successfully"}
 
+# Mật khẩu mặc định của dữ liệu mẫu. Xem backend/config.py để biết vì sao
+# các mật khẩu này bị chặn khi không bật cờ ALLOW_DEMO_ACCOUNTS.
+MAT_KHAU_MAU = {"admin123", "123456", "password", "12345678"}
+
+
 @router.post("/login")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = await db.users.find_one({"username": form_data.username})
@@ -49,6 +55,18 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Chặn mật khẩu mặc định của dữ liệu mẫu trên môi trường thật.
+    # Kiểm tra SAU khi đã xác thực đúng, để không tiết lộ tài khoản nào tồn tại.
+    if form_data.password in MAT_KHAU_MAU and not ALLOW_DEMO_ACCOUNTS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Tài khoản đang dùng mật khẩu mặc định của dữ liệu mẫu nên bị từ chối "
+                "trên môi trường này. Quản trị hệ thống cần đổi mật khẩu, hoặc bật biến "
+                "môi trường ALLOW_DEMO_ACCOUNTS nếu đây là bản chạy thử có kiểm soát."
+            ),
         )
     from datetime import timedelta
     from backend.security import ACCESS_TOKEN_EXPIRE_MINUTES
