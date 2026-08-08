@@ -1,5 +1,5 @@
 # KỊCH BẢN DEMO THỦ CÔNG
-## Hệ thống Tính điểm KPI trong Công an nhân dân
+## Hệ thống tính điểm KPI trong Công an nhân dân (KPI-CAND)
 
 Làm theo đúng thứ tự dưới đây, mỗi kịch bản 3–5 phút. Mỗi bước đều ghi rõ
 **đăng nhập bằng gì · làm gì · phải thấy gì**.

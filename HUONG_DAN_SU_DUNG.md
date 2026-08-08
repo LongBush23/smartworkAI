@@ -1,5 +1,5 @@
 # HƯỚNG DẪN SỬ DỤNG
-## Hệ thống Tính điểm KPI trong Công an nhân dân
+## Hệ thống tính điểm KPI trong Công an nhân dân (KPI-CAND)
 
 Hệ thống được xây dựng theo **Hướng dẫn số 20-HD/ĐUCA ngày 08/6/2026** của Ban Thường vụ
 Đảng ủy Công an Trung ương về phương pháp tính điểm và sử dụng chỉ số đo lường (KPI)

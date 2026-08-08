@@ -1,6 +1,6 @@
 """
-Role-based access control dependencies for SmartWork AI.
-Hierarchy: ADMIN > DIRECTOR > LEADER > STAFF
+Phân quyền theo thẩm quyền cho Hệ thống tính điểm KPI trong Công an nhân dân (KPI-CAND).
+Thứ bậc: ADMIN > DIRECTOR > LEADER > STAFF
 """
 from fastapi import Depends, HTTPException, status
 from backend.security import get_current_user

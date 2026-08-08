@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from backend.database import db
+from backend.services.ai.projections import KPI_TOI_THIEU, NHIEM_VU_DAC_TRUNG
 from backend.models.security_policy import rank_of, CLASSIFICATION_LABELS
 
 # Trọng số từng thành phần. Tổng bằng 1,0.
@@ -63,16 +64,21 @@ async def suggest(
     users = await db.users.find({
         "department_id": department_id,
         "role": {"$ne": "admin"},
+    }, {
+        "name": 1, "rank": 1, "position": 1, "department_id": 1,
+        "capacity_points": 1, "clearance_level": 1,
     }).to_list(500)
 
     tasks = await db.tasks.find({
         "department_id": department_id,
         "period_month": month,
         "period_year": year,
-    }).to_list(2000)
+    }, NHIEM_VU_DAC_TRUNG).to_list(2000)
 
     # Lịch sử để đánh giá chất lượng, tiến độ — lấy cả các kỳ trước
-    history = await db.tasks.find({"department_id": department_id}).to_list(5000)
+    history = await db.tasks.find(
+        {"department_id": department_id}, NHIEM_VU_DAC_TRUNG
+    ).to_list(5000)
 
     evaluations = await db.kpi_evaluations.find({
         "department_id": department_id,
@@ -80,7 +86,7 @@ async def suggest(
         "period_type": "monthly",
         "overall_status": "approved",
         "period_year": year,
-    }).to_list(2000)
+    }, KPI_TOI_THIEU).to_list(2000)
 
     # Gom dữ liệu theo cán bộ
     tasks_by_user: Dict[str, List[dict]] = {}

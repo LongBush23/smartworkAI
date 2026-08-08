@@ -88,12 +88,16 @@ async def get_employee_profile(
     percent = round(open_points / capacity * 100, 1) if capacity else 0.0
 
     # Diễn biến KPI trong năm
+    # Chỉ lấy 3 trường: một bản ghi đầy đủ nặng khoảng 17 KB vì kèm chi tiết
+    # từng nhiệm vụ, mà chỗ này chỉ cần vẽ đường diễn biến KPI.
     evaluations = await db.kpi_evaluations.find({
         "target_id": employee_id,
         "evaluation_type": "individual",
         "period_type": "monthly",
         "period_year": year,
         "overall_status": "approved",
+    }, {
+        "period_month": 1, "approval.kpi_score": 1, "approval.kpi_group": 1,
     }).to_list(24)
     evaluations.sort(key=lambda e: e.get("period_month") or 0)
 

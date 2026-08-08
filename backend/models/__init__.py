@@ -1,1 +1,1 @@
-# SmartWork AI – models package
+# KPI-CAND – models package

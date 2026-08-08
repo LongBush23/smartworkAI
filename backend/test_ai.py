@@ -448,3 +448,79 @@ def test_khong_dung_allow_credentials_cung_voi_cors_mo_rong():
     source = inspect.getsource(main)
     assert "allow_credentials=False" in source
     assert "allow_credentials=True" not in source
+
+
+# ---------------------------------------------------------------------------
+# Hiệu năng — mọi truy vấn nhiều bản ghi phải có projection
+#
+# Một bản ghi kpi_evaluations nặng ~17 KB vì kèm chi tiết từng nhiệm vụ. Lấy
+# nguyên 390 bản ghi là tải 6,8 MB qua mạng mỗi lần gọi API. Đo được: endpoint
+# cảnh báo sớm mất 5,4 giây, trong đó 5,17 giây là chờ socket — không phải tính
+# toán. Thêm projection đưa xuống 0,4 giây.
+#
+# Test này chặn việc bỏ projection, vì hậu quả không hiện ra khi chạy máy cục bộ
+# với cơ sở dữ liệu ở cùng máy — chỉ lộ ra trên bản triển khai dùng Atlas.
+# ---------------------------------------------------------------------------
+
+def _cac_loi_goi_find_khong_projection(path):
+    """Trả về [(dòng, biểu thức)] cho mỗi .find(...) nhiều bản ghi thiếu projection."""
+    import ast
+
+    tree = ast.parse(path.read_text())
+    thieu = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        # Chỉ xét .find() — find_one() trả về 1 bản ghi nên không đáng lo
+        if node.func.attr != "find":
+            continue
+        if len(node.args) < 2:
+            thieu.append((node.lineno, ast.unparse(node.func)))
+    return thieu
+
+
+def test_moi_truy_van_trong_goi_ai_deu_co_projection():
+    import pathlib
+
+    goi_ai = pathlib.Path(__file__).parent / "services" / "ai"
+    loi = []
+    for f in sorted(goi_ai.glob("*.py")):
+        for dong, bieu_thuc in _cac_loi_goi_find_khong_projection(f):
+            loi.append(f"{f.name}:{dong} — {bieu_thuc}.find() thiếu projection")
+
+    assert not loi, (
+        "Truy vấn thiếu projection sẽ tải nguyên bản ghi 17 KB qua mạng:\n  "
+        + "\n  ".join(loi)
+        + "\n\nDùng hằng số trong backend/services/ai/projections.py."
+    )
+
+
+def test_projection_kpi_du_cac_truong_ma_mo_hinh_thuc_su_doc():
+    """
+    Projection thiếu trường thì không báo lỗi — chỉ âm thầm cho ra số sai.
+    Khoá lại danh sách trường tối thiểu.
+    """
+    from backend.services.ai.projections import KPI_RA_SOAT, KPI_TOI_THIEU
+
+    for truong in ("target_id", "period_month", "period_year",
+                   "approval.kpi_score", "approval.kpi_group"):
+        assert KPI_TOI_THIEU.get(truong) == 1, f"Thiếu {truong}"
+
+    # Rà soát chấm điểm hình thức cần thêm điểm E và mức tự nhận
+    for truong in ("general_criteria.total_E", "self_evaluation.proposed_rating"):
+        assert KPI_RA_SOAT.get(truong) == 1, f"Thiếu {truong}"
+
+
+def test_projection_nhiem_vu_khong_lay_truong_bi_che():
+    """
+    Các trường bị che theo cấp độ tiếp cận không được nằm trong projection của
+    mô hình: mô hình chỉ dùng số liệu, không cần nội dung nhiệm vụ.
+    """
+    from backend.models.security_policy import RESTRICTED_FIELDS
+    from backend.services.ai.projections import NHIEM_VU_DAC_TRUNG
+
+    for truong in RESTRICTED_FIELDS:
+        assert truong not in NHIEM_VU_DAC_TRUNG, (
+            f"{truong!r} là trường bị che theo cấp độ tiếp cận, "
+            "không được đưa vào projection của mô hình"
+        )

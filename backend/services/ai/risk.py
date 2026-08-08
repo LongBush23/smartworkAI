@@ -25,6 +25,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from backend.database import db
+from backend.services.ai.projections import KPI_TOI_THIEU, NHIEM_VU_DAC_TRUNG
 
 # Dưới ngưỡng này thì mô hình không đáng tin, không được đưa ra dùng
 AUC_TOI_THIEU = 0.70
@@ -151,7 +152,7 @@ async def train_group3_model() -> Dict[str, Any]:
         "evaluation_type": "individual",
         "period_type": "monthly",
         "overall_status": "approved",
-    }).to_list(20000)
+    }, KPI_TOI_THIEU).to_list(20000)
 
     users = {
         str(u["_id"]): u
@@ -343,8 +344,15 @@ async def predict_task_risk(
     if department_id:
         query["department_id"] = department_id
 
-    tasks = await db.tasks.find(query).to_list(5000)
-    users = {str(u["_id"]): u.get("name") for u in await db.users.find({}).to_list(2000)}
+    # Thêm code và title vì phần trả về cần hiện tên nhiệm vụ. Nhiệm vụ có độ mật
+    # vẫn chỉ hiện mã hiệu — việc che nằm ở đoạn dựng items bên dưới.
+    tasks = await db.tasks.find(
+        query, {**NHIEM_VU_DAC_TRUNG, "code": 1, "title": 1}
+    ).to_list(5000)
+    users = {
+        str(u["_id"]): u.get("name")
+        for u in await db.users.find({}, {"name": 1}).to_list(2000)
+    }
 
     items = []
     for t in tasks:
@@ -402,12 +410,14 @@ async def predict_officer_risk(
     uq: Dict[str, Any] = {"role": {"$ne": "admin"}}
     if department_id:
         uq["department_id"] = department_id
-    users = await db.users.find(uq).to_list(2000)
+    users = await db.users.find(uq, {
+        "name": 1, "rank": 1, "position": 1, "department_id": 1, "capacity_points": 1,
+    }).to_list(2000)
 
     tq: Dict[str, Any] = {"period_month": month, "period_year": year}
     if department_id:
         tq["department_id"] = department_id
-    tasks = await db.tasks.find(tq).to_list(20000)
+    tasks = await db.tasks.find(tq, NHIEM_VU_DAC_TRUNG).to_list(20000)
 
     by_user: Dict[str, List[dict]] = {}
     for t in tasks:
@@ -417,7 +427,7 @@ async def predict_officer_risk(
     evaluations = await db.kpi_evaluations.find({
         "evaluation_type": "individual", "period_type": "monthly",
         "overall_status": "approved",
-    }).to_list(20000)
+    }, KPI_TOI_THIEU).to_list(20000)
     history: Dict[str, List[Tuple[Tuple[int, int], float]]] = {}
     for e in evaluations:
         s = (e.get("approval") or {}).get("kpi_score")

@@ -13,6 +13,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from backend.database import db
+from backend.services.ai.projections import KPI_RA_SOAT, KPI_TOI_THIEU, NHIEM_VU_DAC_TRUNG
 
 # Ngưỡng của từng dấu hiệu — đặt ở đây để dễ rà soát và điều chỉnh
 NGUONG = {
@@ -66,8 +67,11 @@ async def detect(
     if department_id:
         query["department_id"] = department_id
 
-    evaluations = await db.kpi_evaluations.find(query).to_list(5000)
-    departments = {str(d["_id"]): d for d in await db.departments.find({}).to_list(500)}
+    evaluations = await db.kpi_evaluations.find(query, KPI_RA_SOAT).to_list(5000)
+    departments = {
+        str(d["_id"]): d
+        for d in await db.departments.find({}, {"name": 1, "code": 1}).to_list(500)
+    }
 
     flags: List[Dict[str, Any]] = []
 
@@ -122,7 +126,7 @@ async def detect(
             "department_id": dept_id,
             "period_month": period_month,
             "period_year": period_year,
-        }).to_list(2000)
+        }, NHIEM_VU_DAC_TRUNG).to_list(2000)
         if tasks:
             overdue = sum(
                 1 for t in tasks
@@ -172,7 +176,7 @@ async def detect(
             "evaluation_type": "individual",
             "period_type": "monthly",
             "overall_status": "approved",
-        }).to_list(10000)
+        }, KPI_TOI_THIEU).to_list(10000)
 
         by_target: Dict[str, List[dict]] = defaultdict(list)
         for h in history:
