@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Bell, FileEdit, Trash2, ListChecks, AlertTriangle, Lock, EyeOff } from 'lucide-react';
+import { Plus, Bell, FileEdit, Trash2, ListChecks, AlertTriangle, Lock } from 'lucide-react';
 import api from '../lib/api';
+import TaskTitle from '../components/TaskTitle';
 import {
   taskApi, PRODUCT_LABELS, TASK_STATUS_LABELS, TASK_STATUS_COLORS,
-  TASK_TYPE_LABELS, TASK_TYPE_COLORS, CLASSIFICATION_LABELS, CLASSIFICATION_COLORS,
+  TASK_TYPE_LABELS, TASK_TYPE_COLORS, CLASSIFICATION_LABELS,
 } from '../lib/task-api';
 import type { Task } from '../lib/task-api';
 import {
@@ -225,31 +226,16 @@ const Tasks = () => {
                         {t.code || '—'}
                       </td>
                       <td className="px-3 py-2 max-w-xs">
-                        <div className="flex items-start gap-1.5">
-                          {classified && <Lock size={13} className="text-crimson-600 shrink-0 mt-0.5" />}
-                          <div className="min-w-0">
-                            <p className={`truncate font-medium ${t.is_redacted ? 'italic text-navy-400' : 'text-navy-800'}`}>
-                              {t.title}
-                            </p>
-                            {classified ? (
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className={`px-1.5 py-0 text-[9px] font-bold tracking-wider rounded-sm border ${CLASSIFICATION_COLORS[t.classification]}`}>
-                                  {CLASSIFICATION_LABELS[t.classification]}
-                                </span>
-                                {t.is_redacted && (
-                                  <span className="inline-flex items-center gap-0.5 text-[9px] text-crimson-600">
-                                    <EyeOff size={9} /> chưa đủ cấp độ tiếp cận
-                                  </span>
-                                )}
-                                {t.file_reference && (
-                                  <span className="text-[9px] text-navy-500 font-mono">{t.file_reference}</span>
-                                )}
-                              </div>
-                            ) : t.description && (
-                              <p className="text-[11px] text-navy-400 truncate">{t.description}</p>
-                            )}
-                          </div>
-                        </div>
+                        <TaskTitle
+                          title={t.title}
+                          code={t.code}
+                          classification={t.classification}
+                          isRedacted={t.is_redacted}
+                          fileReference={t.file_reference}
+                        />
+                        {!classified && t.description && (
+                          <p className="text-[11px] text-navy-400 truncate mt-0.5">{t.description}</p>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <span className={`px-1.5 py-0.5 text-[10px] rounded-sm border whitespace-nowrap ${TASK_TYPE_COLORS[t.task_type] ?? ''}`}>

@@ -68,6 +68,36 @@ body {
   color: var(--color-navy-400);
 }
 
+/*
+ * Thanh điều hướng co theo CHIỀU CAO màn hình.
+ *
+ * Quản trị hệ thống thấy 11 mục cộng 4 tiêu đề nhóm. Trên màn 1280x600 hoặc khi
+ * người dùng thu nhỏ cửa sổ, chừng đó không vừa một màn và mục cuối bị đẩy
+ * khuất — phải cuộn mới thấy "Nhật ký hệ thống".
+ *
+ * Thay vì bắt cuộn, thu dần khoảng cách theo chiều cao. Bốn nấc dưới đây giữ
+ * cho mọi mục nằm trọn trong một màn từ 1080px xuống tới 560px.
+ * Dùng media query theo chiều cao chứ không theo chiều rộng: vấn đề nằm ở
+ * chiều dọc, một màn 1920x600 vẫn chật như 1280x600.
+ */
+@media (max-height: 800px) {
+  .nav-thich-ung a { padding-top: 0.3rem; padding-bottom: 0.3rem; }
+  .nav-thich-ung .section-label { padding-top: 0.2rem; padding-bottom: 0.05rem; }
+}
+@media (max-height: 700px) {
+  .nav-thich-ung a { padding-top: 0.2rem; padding-bottom: 0.2rem; }
+  .nav-thich-ung .nav-nhom { padding-top: 0.2rem; }
+}
+@media (max-height: 620px) {
+  .nav-thich-ung a { padding-top: 0.1rem; padding-bottom: 0.1rem; font-size: 12px; }
+  .nav-thich-ung .section-label { font-size: 0.625rem; padding-top: 0.1rem; }
+  .nav-thich-ung .nav-nhom { padding-top: 0.1rem; }
+}
+/* Dưới mức này thì chữ đã quá nhỏ để ép thêm — bỏ tiêu đề nhóm, giữ lại mục */
+@media (max-height: 545px) {
+  .nav-thich-ung .section-label { display: none; }
+}
+
 /* Sọc chéo cho vùng thông tin bị che vì chưa đủ cấp độ tiếp cận */
 .classified-hatch {
   background-image: repeating-linear-gradient(

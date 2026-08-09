@@ -8,6 +8,7 @@ import type { KPIEvaluation } from '../lib/kpi-api';
 import { taskApi, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '../lib/task-api';
 import type { Task } from '../lib/task-api';
 import { EarlyWarning } from '../components/EarlyWarning';
+import TaskTitle from '../components/TaskTitle';
 
 const MONTH_NAMES = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
 
@@ -217,11 +218,26 @@ const Dashboard = () => {
               .slice(0, 6)
               .map(t => {
                 const isOverdue = t.status !== 'done' && new Date(t.deadline) < now;
+                const coDoMat = t.classification !== 'thuong';
                 return (
-                  <li key={t._id} className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-gray-50">
+                  <li
+                    key={t._id}
+                    className={`flex items-center justify-between gap-4 px-5 py-3 hover:bg-navy-50/60 ${
+                      coDoMat ? 'bg-crimson-50/40' : ''
+                    }`}
+                  >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{t.title}</p>
-                      <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                      {/* Dùng component chung để nhiệm vụ có độ mật luôn hiện ổ
+                          khoá và huy hiệu — trước đây chỗ này in thẳng t.title */}
+                      <TaskTitle
+                        title={t.title}
+                        code={t.code}
+                        classification={t.classification}
+                        isRedacted={t.is_redacted}
+                        fileReference={t.file_reference}
+                        className="text-sm"
+                      />
+                      <p className={`text-xs mt-0.5 ${isOverdue ? 'text-crimson-600 font-medium' : 'text-navy-500'}`}>
                         Hạn {new Date(t.deadline).toLocaleDateString('vi-VN')}
                         {isOverdue && ' · quá hạn'}
                         {' · '}{t.kpi_point} điểm

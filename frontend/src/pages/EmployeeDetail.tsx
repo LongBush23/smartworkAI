@@ -7,11 +7,12 @@ import {
 } from 'lucide-react';
 import {
   taskApi, WORKLOAD_LABELS, WORKLOAD_COLORS, WORKLOAD_BAR, CLEARANCE_LABELS,
-  TASK_STATUS_LABELS, TASK_STATUS_COLORS, CLASSIFICATION_LABELS, CLASSIFICATION_COLORS,
+  TASK_STATUS_LABELS, TASK_STATUS_COLORS,
   PRODUCT_LABELS,
 } from '../lib/task-api';
 import type { EmployeeProfile, Task } from '../lib/task-api';
 import { KPI_GROUP_LABELS, KPI_GROUP_COLORS, ROLE_LABELS } from '../lib/kpi-api';
+import TaskTitle from '../components/TaskTitle';
 
 const MONTHS = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
 
@@ -234,17 +235,12 @@ const EmployeeDetail = () => {
                         {t.code || '—'}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5">
-                          {classified && <Lock size={12} className="text-crimson-600 shrink-0" />}
-                          <span className={`truncate ${t.is_redacted ? 'italic text-navy-400' : 'text-navy-800'}`}>
-                            {t.title}
-                          </span>
-                        </div>
-                        {classified && (
-                          <span className={`inline-block mt-0.5 px-1.5 py-0 text-[9px] font-bold tracking-wide rounded-sm border ${CLASSIFICATION_COLORS[t.classification]}`}>
-                            {CLASSIFICATION_LABELS[t.classification]}
-                          </span>
-                        )}
+                        <TaskTitle
+                          title={t.title}
+                          code={t.code}
+                          classification={t.classification}
+                          isRedacted={t.is_redacted}
+                        />
                       </td>
                       <td className="px-3 py-2 text-navy-600 text-xs">{PRODUCT_LABELS[t.product] ?? t.product}</td>
                       <td className="px-3 py-2 text-center tabular font-medium text-navy-700">{t.kpi_point}</td>

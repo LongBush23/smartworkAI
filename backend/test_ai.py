@@ -511,6 +511,65 @@ def test_projection_kpi_du_cac_truong_ma_mo_hinh_thuc_su_doc():
         assert KPI_RA_SOAT.get(truong) == 1, f"Thiếu {truong}"
 
 
+# ---------------------------------------------------------------------------
+# Giao diện — nhiệm vụ có độ mật phải luôn có dấu hiệu nhận biết
+#
+# Máy chủ che dữ liệu đúng, nhưng trang chủ từng in thẳng {t.title} nên nhiệm vụ
+# TUYỆT MẬT hiện lên y hệt nhiệm vụ thường: không ổ khoá, không huy hiệu. Người
+# xem không hề biết mình đang nhìn tài liệu mật.
+#
+# Gốc rễ là mỗi trang tự vẽ lấy. Nay gom về components/TaskTitle.tsx, và test
+# này chặn việc một trang mới lại vẽ tay rồi quên độ mật.
+# ---------------------------------------------------------------------------
+
+def _thu_muc_frontend():
+    import pathlib
+    return pathlib.Path(__file__).resolve().parent.parent / "frontend" / "src"
+
+
+def test_moi_trang_hien_ten_nhiem_vu_deu_dung_component_chung():
+    import re
+
+    src = _thu_muc_frontend()
+    if not src.exists():
+        pytest.skip("Không có mã nguồn giao diện")
+
+    loi = []
+    for f in sorted(src.rglob("*.tsx")):
+        if f.name == "TaskTitle.tsx":
+            continue
+        noi_dung = f.read_text()
+        # Chỉ xét component thực sự làm việc với đối tượng Task
+        lam_viec_voi_task = "type { Task }" in noi_dung or "Task[]" in noi_dung
+        if not lam_viec_voi_task:
+            continue
+        # Có in tên nhiệm vụ ra JSX không? (bỏ qua thuộc tính như title={...})
+        in_ten = re.search(r"\{\s*\w+\.title\s*\}", noi_dung)
+        if in_ten and "TaskTitle" not in noi_dung:
+            loi.append(f"{f.relative_to(src)} in thẳng .title mà không dùng TaskTitle")
+
+    assert not loi, (
+        "Nhiệm vụ có độ mật sẽ hiện như nhiệm vụ thường:\n  " + "\n  ".join(loi)
+        + "\n\nDùng <TaskTitle> trong components/TaskTitle.tsx."
+    )
+
+
+def test_component_ten_nhiem_vu_co_du_dau_hieu_do_mat():
+    """TaskTitle phải có ổ khoá, huy hiệu độ mật và cảnh báo chưa đủ cấp độ."""
+    src = _thu_muc_frontend()
+    if not src.exists():
+        pytest.skip("Không có mã nguồn giao diện")
+
+    noi_dung = (src / "components" / "TaskTitle.tsx").read_text()
+    for phai_co, mo_ta in [
+        ("Lock", "biểu tượng ổ khoá"),
+        ("CLASSIFICATION_LABELS", "nhãn độ mật"),
+        ("isRedacted", "trạng thái bị che"),
+        ("chưa đủ cấp độ tiếp cận", "cảnh báo thiếu cấp độ tiếp cận"),
+    ]:
+        assert phai_co in noi_dung, f"TaskTitle thiếu {mo_ta}"
+
+
 def test_projection_nhiem_vu_khong_lay_truong_bi_che():
     """
     Các trường bị che theo cấp độ tiếp cận không được nằm trong projection của
