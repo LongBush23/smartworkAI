@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { kpiApi } from '../lib/kpi-api';
 import type { KPIEvaluation, TaskKPIScore } from '../lib/kpi-api';
 import { Check, ClipboardList, Send, ChevronRight } from 'lucide-react';
-import api from '../lib/api';
 import { GuidelineLookup } from '../components/GuidelineLookup';
+import { layMe } from '../lib/me';
 
 const STEP_LABELS = [
   'Tự đánh giá và đề xuất mức xếp loại',
@@ -71,7 +71,7 @@ const KPIEvaluate = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const meRes = await api.get('/auth/me');
+      const meRes = { data: await layMe() };
       setUserRole(meRes.data.role);
       setUserId(meRes.data._id);
       const evals = await kpiApi.getEvaluations({

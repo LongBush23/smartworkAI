@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../lib/api';
 import { CLEARANCE_LABELS } from '../lib/task-api';
+import { layMe, xoaCacheMe } from '../lib/me';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Quản trị hệ thống',
@@ -84,7 +85,7 @@ const Layout = () => {
   useEffect(() => () => { if (hoanRe.current) window.clearTimeout(hoanRe.current); }, []);
 
   useEffect(() => {
-    api.get('/auth/me').then(res => setUser(res.data)).catch(() => {});
+    layMe().then(setUser).catch(() => {});
 
     const fetchUnreadCount = () => {
       api.get('/notifications/unread-count').then(res => setUnreadCount(res.data.count)).catch(() => {});
@@ -102,6 +103,7 @@ const Layout = () => {
 
   const handleLogout = async () => {
     try { await api.post('/auth/logout'); } catch { /* vẫn xoá token phía client */ }
+    xoaCacheMe();
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     window.location.href = '/';

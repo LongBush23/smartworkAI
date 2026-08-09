@@ -4,6 +4,7 @@ import { User, KeyRound, Save, Award, Building2 } from 'lucide-react';
 import api from '../lib/api';
 import { kpiApi, KPI_GROUP_LABELS, KPI_GROUP_COLORS } from '../lib/kpi-api';
 import type { KPIEvaluation } from '../lib/kpi-api';
+import { layMe } from '../lib/me';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Quản trị hệ thống',
@@ -33,7 +34,7 @@ const Profile = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const meRes = await api.get('/auth/me');
+      const meRes = { data: await layMe() };
       setMe(meRes.data);
       setForm({
         name: meRes.data.name ?? '',

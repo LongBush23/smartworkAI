@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { LogIn, User, Key, Building, AlertCircle } from 'lucide-react';
+import { xoaCacheMe } from '../lib/me';
 
 const Login = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
   const [loading, setLoading] = useState(false);
@@ -23,6 +24,9 @@ const Login = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
       const res = await api.post('/auth/login', formData.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
+      // Xoá danh tính đã cache của phiên trước, tránh đăng nhập tài khoản
+      // khác mà giao diện vẫn hiện tên người cũ
+      xoaCacheMe();
       localStorage.setItem('token', res.data.access_token);
       if (res.data.refresh_token) {
         localStorage.setItem('refresh_token', res.data.refresh_token);

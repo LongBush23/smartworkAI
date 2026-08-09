@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { ListChecks, Award, TrendingUp, AlertTriangle, ArrowRight, Bell, FileEdit } from 'lucide-react';
-import api from '../lib/api';
 import { kpiApi, KPI_GROUP_LABELS, KPI_GROUP_COLORS } from '../lib/kpi-api';
 import type { KPIEvaluation } from '../lib/kpi-api';
 import { taskApi, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '../lib/task-api';
 import type { Task } from '../lib/task-api';
 import { EarlyWarning } from '../components/EarlyWarning';
 import TaskTitle from '../components/TaskTitle';
+import { layMe } from '../lib/me';
 
 const MONTH_NAMES = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
 
@@ -33,7 +33,7 @@ const Dashboard = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const meRes = await api.get('/auth/me');
+        const meRes = { data: await layMe() };
         setMe(meRes.data);
 
         const [taskList, evals] = await Promise.all([

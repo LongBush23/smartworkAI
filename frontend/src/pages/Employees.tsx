@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Plus, Edit2, Trash2, Mail, Users, X, Building2 } from 'lucide-react';
 import api from '../lib/api';
+import { layMe } from '../lib/me';
 
 interface Employee {
   _id: string;
@@ -62,7 +63,7 @@ const Employees = () => {
     try {
       setLoading(true);
       const [meRes, empRes, deptRes] = await Promise.all([
-        api.get('/auth/me'),
+        layMe().then(data => ({ data })),
         api.get('/employees/', { params: { role: '' } }).catch(() => ({ data: [] })),
         api.get('/departments/').catch(() => ({ data: [] })),
       ]);

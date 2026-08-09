@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ShieldAlert, RefreshCw, Info, ChevronDown, ChevronRight } from 'lucide-react';
-import api from '../lib/api';
 import { aiApi, SEVERITY_LABELS, SEVERITY_COLORS } from '../lib/ai-api';
 import type { AnomalyResult } from '../lib/ai-api';
+import { layMe } from '../lib/me';
 
 const QualityReview = () => {
   const now = new Date();
@@ -20,7 +20,7 @@ const QualityReview = () => {
     try {
       setLoading(true);
       const [meRes, result] = await Promise.all([
-        api.get('/auth/me'),
+        layMe().then(data => ({ data })),
         aiApi.anomalies({ period_month: period.month, period_year: period.year }),
       ]);
       setMe(meRes.data);

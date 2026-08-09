@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { ClipboardCheck, Save, Check, X, Info } from 'lucide-react';
-import api from '../lib/api';
 import { kpiApi } from '../lib/kpi-api';
 import type { CriteriaTemplate, CriteriaItem, KPIEvaluation } from '../lib/kpi-api';
+import { layMe } from '../lib/me';
 
 type CriteriaType = 'collective' | 'leader' | 'staff';
 
@@ -42,7 +42,7 @@ const KPICriteria = () => {
     try {
       setLoading(true);
       const [meRes, tmplList, evals] = await Promise.all([
-        api.get('/auth/me'),
+        layMe().then(data => ({ data })),
         kpiApi.getAllCriteriaTemplates(),
         kpiApi.getEvaluations({ period_year: year }).catch(() => []),
       ]);

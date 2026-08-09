@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { kpiApi } from '../lib/kpi-api';
 import type { KPICatalogItem, KPICatalog } from '../lib/kpi-api';
 import { Plus, Save, Check, Trash2, Target } from 'lucide-react';
-import api from '../lib/api';
 import { COMPLEXITY_GROUP_LABELS } from '../lib/kpi-api';
+import { layMe } from '../lib/me';
 
 const KPICatalogPage = () => {
   const [catalogs, setCatalogs] = useState<KPICatalog[]>([]);
@@ -25,7 +25,7 @@ const KPICatalogPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const meRes = await api.get('/auth/me');
+      const meRes = { data: await layMe() };
       setUserRole(meRes.data.role);
       setDepartmentId(meRes.data.department_id);
 

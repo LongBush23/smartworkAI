@@ -12,6 +12,7 @@ import {
   qualityTierFromRevisions, timelineTierFromReminders, QUALITY_PERCENT, TIMELINE_PERCENT,
 } from '../lib/kpi-api';
 import { TaskModal } from '../components/TaskModal';
+import { layMe } from '../lib/me';
 
 const Tasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -30,7 +31,7 @@ const Tasks = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const meRes = await api.get('/auth/me');
+      const meRes = { data: await layMe() };
       setMe(meRes.data);
 
       const taskList = await taskApi.list({
