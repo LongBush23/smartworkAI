@@ -29,16 +29,30 @@ const Dashboard = () => {
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
 
+  /*
+   * Hai giai đoạn, cố ý tách rời.
+   *
+   * Trước đây cả trang chờ xong HẾT mới vẽ, nên khối Cảnh báo sớm — vốn tự lo
+   * việc tải dữ liệu của nó — phải đợi cả lượt tải nhiệm vụ và kỳ đánh giá rồi
+   * mới được gắn vào cây và bắt đầu gọi API. Đo trên bản triển khai: nó khởi
+   * động ở mốc 1684ms trong khi lẽ ra có thể bắt đầu từ 1200ms.
+   *
+   * Nay biết danh tính là vẽ khung ngay; các con số hiện dấu gạch cho tới khi
+   * có dữ liệu. Nhờ vậy hai lời gọi của Cảnh báo sớm chạy song song với lượt
+   * tải nhiệm vụ thay vì xếp hàng sau nó.
+   */
   useEffect(() => {
+    layMe().then(setMe).catch(err => console.error('Không lấy được thông tin cán bộ', err));
+  }, []);
+
+  useEffect(() => {
+    if (!me?._id) return;
     const load = async () => {
       try {
         setLoading(true);
-        const meRes = { data: await layMe() };
-        setMe(meRes.data);
-
         const [taskList, evals] = await Promise.all([
-          taskApi.list({ assignee_id: meRes.data._id, period_month: month, period_year: year }).catch(() => []),
-          kpiApi.getEvaluations({ target_id: meRes.data._id, period_year: year }).catch(() => []),
+          taskApi.list({ assignee_id: me._id, period_month: month, period_year: year }).catch(() => []),
+          kpiApi.getEvaluations({ target_id: me._id, period_year: year }).catch(() => []),
         ]);
         setTasks(taskList);
         setMyEvals(evals);
@@ -49,10 +63,11 @@ const Dashboard = () => {
       }
     };
     load();
-  }, [month, year]);
+  }, [me?._id, month, year]);
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
+  // Chỉ chặn khi chưa biết mình là ai — lúc đó chưa vẽ được gì có nghĩa
+  if (!me) {
+    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600" /></div>;
   }
 
   const currentEval = myEvals.find(e => e.period_month === month && e.period_type === 'monthly');
@@ -103,7 +118,7 @@ const Dashboard = () => {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-gray-500">Nhiệm vụ tháng này</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">{doneCount}/{tasks.length}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{loading ? '–' : `${doneCount}/${tasks.length}`}</p>
               <p className="text-xs text-gray-400 mt-0.5">đã hoàn thành</p>
             </div>
             <div className="p-2.5 bg-blue-50 rounded-lg"><ListChecks className="h-5 w-5 text-blue-600" /></div>
@@ -114,7 +129,7 @@ const Dashboard = () => {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-gray-500">Quá hạn</p>
-              <p className={`text-2xl font-bold mt-1 ${overdue.length > 0 ? 'text-red-600' : 'text-gray-800'}`}>{overdue.length}</p>
+              <p className={`text-2xl font-bold mt-1 ${overdue.length > 0 ? 'text-red-600' : 'text-gray-800'}`}>{loading ? '–' : overdue.length}</p>
               <p className="text-xs text-gray-400 mt-0.5">nhiệm vụ</p>
             </div>
             <div className="p-2.5 bg-red-50 rounded-lg"><AlertTriangle className="h-5 w-5 text-red-600" /></div>
@@ -126,7 +141,7 @@ const Dashboard = () => {
             <div>
               <p className="text-xs text-gray-500">KPI kỳ gần nhất</p>
               <p className="text-2xl font-bold text-indigo-600 mt-1">
-                {latest ? Number(latest.approval.kpi_score).toFixed(1) : '–'}
+                {loading ? '–' : latest ? Number(latest.approval.kpi_score).toFixed(1) : '–'}
               </p>
               {latest && (
                 <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-medium rounded-full border ${KPI_GROUP_COLORS[latest.approval.kpi_group] ?? ''}`}>
@@ -142,7 +157,7 @@ const Dashboard = () => {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-gray-500">KPI bình quân năm {year}</p>
-              <p className="text-2xl font-bold text-emerald-600 mt-1">{avgKpi != null ? avgKpi.toFixed(1) : '–'}</p>
+              <p className="text-2xl font-bold text-emerald-600 mt-1">{loading || avgKpi == null ? '–' : avgKpi.toFixed(1)}</p>
               <p className="text-xs text-gray-400 mt-0.5">{approvedMonthly.length} tháng đã duyệt</p>
             </div>
             <div className="p-2.5 bg-emerald-50 rounded-lg"><TrendingUp className="h-5 w-5 text-emerald-600" /></div>
