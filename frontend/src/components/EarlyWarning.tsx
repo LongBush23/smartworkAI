@@ -10,14 +10,21 @@ import type { OfficerRisk, TaskRisk } from '../lib/ai-api';
  * Đây là dự báo để đôn đốc, hỗ trợ kịp thời — KHÔNG phải kết quả đánh giá và
  * không ảnh hưởng tới điểm KPI của bất kỳ ai.
  */
-export const EarlyWarning = ({ departmentId }: { departmentId?: string }) => {
+export const EarlyWarning = () => {
   const [officers, setOfficers] = useState<OfficerRisk[]>([]);
   const [tasks, setTasks] = useState<TaskRisk[]>([]);
   const [unusable, setUnusable] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { load(); }, [departmentId]);
+  // Gọi ngay khi gắn vào cây, KHÔNG chờ /auth/me.
+  //
+  // Trước đây component nhận departmentId từ trang cha, nên phải đợi /auth/me
+  // xong mới bắt đầu — trên bản triển khai Render đó là thêm một vòng 0,6 giây
+  // nằm thẳng trên đường tới nội dung. Máy chủ đã tự giới hạn theo đơn vị của
+  // người đăng nhập (_scope_department trong routers/ai.py), nên không truyền
+  // department_id vẫn ra đúng kết quả mà tiết kiệm được một vòng.
+  useEffect(() => { load(); }, []);
 
   const load = async () => {
     setLoading(true);
@@ -27,8 +34,8 @@ export const EarlyWarning = ({ departmentId }: { departmentId?: string }) => {
     // Gọi riêng từng cái để một bên hỏng không làm mất kết quả của bên kia,
     // và để phân biệt "không có cảnh báo" với "không tải được"
     const [o, t] = await Promise.allSettled([
-      aiApi.officerRisk({ department_id: departmentId, threshold: 0.5 }),
-      aiApi.taskRisk({ department_id: departmentId, threshold: 0.5 }),
+      aiApi.officerRisk({ threshold: 0.5 }),
+      aiApi.taskRisk({ threshold: 0.5 }),
     ]);
 
     if (o.status === 'fulfilled') {

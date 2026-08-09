@@ -150,9 +150,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {['leader', 'director', 'admin'].includes(me?.role) && (
-        <EarlyWarning departmentId={me?.department_id} />
-      )}
+      {['leader', 'director', 'admin'].includes(me?.role) && <EarlyWarning />}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Diễn biến KPI */}
