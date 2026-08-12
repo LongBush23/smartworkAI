@@ -125,8 +125,11 @@ const Layout = () => {
     return isAdmin;
   };
 
-  // Trên điện thoại luôn hiện đầy đủ; trên máy tính thì tuỳ ghim / rê chuột.
-  const bung = ghim || dangRe;
+  // Ghim và rê chuột là chuyện của MÁY TÍNH; mở menu là chuyện của ĐIỆN THOẠI.
+  // Trộn hai thứ này vào một biến là nguồn gốc lỗi: trên điện thoại menu mở ra
+  // nhưng vẫn co lại thành dải biểu tượng vì máy tính đang ở trạng thái không ghim.
+  const bungMayTinh = ghim || dangRe;
+  const bung = bungMayTinh || moTrenDienThoai;
 
   return (
     <div className="h-screen flex overflow-hidden">
@@ -144,11 +147,17 @@ const Layout = () => {
       <aside
         onMouseEnter={vaoVungThanh}
         onMouseLeave={roiVungThanh}
+        /*
+          Bề rộng đặt theo biến thể md: chứ KHÔNG ghép hai lớp w-* vào cùng một
+          chuỗi. Thứ tự chữ trong class không quyết định lớp nào thắng — CSS xét
+          theo thứ tự trong stylesheet, nên `w-16 ... w-64` vẫn ra 64px.
+          Điện thoại: luôn đủ 16rem. Máy tính: tuỳ ghim / rê chuột.
+        */
         className={`fixed inset-y-0 left-0 z-40 bg-navy-900 flex flex-col h-screen
           transition-[width,transform] duration-200
-          ${bung ? 'w-64' : 'w-16'}
+          w-64 ${bungMayTinh ? 'md:w-64' : 'md:w-16'}
           ${!ghim && dangRe ? 'shadow-2xl shadow-black/40' : ''}
-          ${moTrenDienThoai ? 'translate-x-0 w-64' : '-translate-x-full'} md:translate-x-0`}
+          ${moTrenDienThoai ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
       >
         {/* Tiêu đề */}
         <div className={`h-14 flex items-center border-b border-navy-700 shrink-0 ${bung ? 'px-3' : 'px-0 justify-center'}`}>
