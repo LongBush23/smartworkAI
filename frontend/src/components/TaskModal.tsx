@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
-import { X, Send, MessageSquare, Lock, EyeOff, ShieldAlert } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  X, Send, MessageSquare, Lock, EyeOff, ShieldAlert,
+  UserCheck, Info, ChevronDown, ChevronRight,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../lib/api';
+import { aiApi } from '../lib/ai-api';
+import type { AssignmentResult } from '../lib/ai-api';
 import {
   PRODUCT_LABELS, TASK_STATUS_LABELS, TASK_TYPE_LABELS,
   CLASSIFICATION_LABELS, CLASSIFICATION_COLORS, CLASSIFICATION_RANK,
@@ -51,6 +56,11 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
 
+  // Gợi ý phân công — mô hình chấm điểm phù hợp, chỉ tham khảo
+  const [goiY, setGoiY] = useState<AssignmentResult | null>(null);
+  const [dangGoiY, setDangGoiY] = useState(false);
+  const [moBiLoai, setMoBiLoai] = useState(false);
+
   const myClearance = currentUser?.clearance_level ?? 0;
 
   useEffect(() => {
@@ -81,6 +91,54 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
   }, [task]);
 
   const isClassified = form.classification !== 'thuong';
+
+  /*
+    Gợi ý phụ thuộc độ mật, nhóm độ phức tạp và loại sản phẩm. Đổi một trong ba
+    thì kết quả cũ không còn đúng nữa — xoá đi thay vì để người dùng chọn nhầm
+    theo một bảng xếp hạng đã lỗi thời.
+  */
+  useEffect(() => {
+    setGoiY(null);
+    setMoBiLoai(false);
+  }, [form.classification, form.complexity_group, form.product]);
+
+  /*
+    Danh sách chọn cán bộ = danh sách của trang Nhiệm vụ + những người được gợi ý.
+
+    Cần gộp vì hai đầu mối không cùng phạm vi: `/employees/` mặc định chỉ trả
+    vai staff và leader, còn mô hình gợi ý xét mọi vai trừ quản trị nên có thể
+    đề xuất cả Trưởng phòng. Không gộp thì bấm chọn một người được gợi ý sẽ
+    không hiện lên ô chọn — trạng thái đã gán đúng nhưng nhìn như chưa gán.
+  */
+  const dsCanBo = useMemo(() => {
+    const m = new Map<string, { id: string; name: string }>();
+    for (const u of users) m.set(u._id, { id: u._id, name: u.name });
+    for (const s of goiY?.suggested ?? []) {
+      if (!m.has(s.id)) m.set(s.id, { id: s.id, name: s.name });
+    }
+    return [...m.values()];
+  }, [users, goiY]);
+
+  const layGoiY = async () => {
+    setDangGoiY(true);
+    try {
+      const kq = await aiApi.suggestAssignee({
+        classification: form.classification,
+        complexity_group: form.complexity_group,
+        product: form.product,
+        department_id: currentUser?.department_id,
+        limit: 5,
+      });
+      setGoiY(kq);
+      if (kq.suggested.length === 0) {
+        toast('Không có cán bộ nào đủ điều kiện nhận nhiệm vụ này');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'Không lấy được gợi ý phân công');
+    } finally {
+      setDangGoiY(false);
+    }
+  };
 
   const handlePickCatalogItem = (itemId: string) => {
     const item = catalogItems.find(i => i.id === itemId);
@@ -353,7 +411,7 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
                     <select disabled={!canEdit} value={form.assigned_to}
                       onChange={e => setForm({ ...form, assigned_to: e.target.value })} className={input}>
                       <option value="">— Chưa giao —</option>
-                      {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+                      {dsCanBo.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
                   </div>
                   <div>
@@ -376,6 +434,94 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
                     </select>
                   </div>
                 </div>
+
+                {/* Gợi ý phân công — mô hình chỉ xếp hạng, người có thẩm quyền quyết định */}
+                {canEdit && !task?.is_redacted && (
+                  <div className="mt-3 pt-3 border-t border-navy-100">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-[11px] text-navy-600 flex items-start gap-1.5">
+                        <UserCheck size={13} className="shrink-0 mt-0.5 text-navy-500" />
+                        <span>
+                          Gợi ý cán bộ phù hợp — xét dư địa tải việc, chất lượng và tiến độ
+                          lịch sử ở cùng nhóm nhiệm vụ, việc quá hạn và KPI các kỳ gần nhất.
+                        </span>
+                      </p>
+                      <button
+                        type="button" onClick={layGoiY} disabled={dangGoiY}
+                        className="shrink-0 px-2.5 py-1 text-[11px] border border-navy-300 rounded-sm
+                          text-navy-700 hover:bg-navy-50 disabled:opacity-50"
+                      >
+                        {dangGoiY ? 'Đang tính…' : goiY ? 'Tính lại' : 'Gợi ý cán bộ'}
+                      </button>
+                    </div>
+
+                    {goiY && (
+                      <div className="mt-2.5 space-y-1.5">
+                        {goiY.suggested.map((s, i) => (
+                          <button
+                            key={s.id} type="button"
+                            onClick={() => setForm(f => ({ ...f, assigned_to: s.id }))}
+                            className={`w-full text-left border rounded-sm px-2.5 py-2 transition-colors
+                              ${form.assigned_to === s.id
+                                ? 'border-navy-600 bg-navy-50'
+                                : 'border-navy-200 hover:bg-navy-50/60'}`}
+                          >
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className="text-sm font-medium text-navy-800">
+                                {i + 1}. {s.name}
+                                {form.assigned_to === s.id && (
+                                  <span className="ml-2 text-[10px] font-normal text-navy-500">đã chọn</span>
+                                )}
+                              </p>
+                              <span className="text-sm font-bold text-navy-700 tabular shrink-0">
+                                {s.score.toFixed(1)}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-navy-500">{s.rank_position}</p>
+                            <p className="text-[11px] text-navy-600 mt-0.5">
+                              Tải việc {s.workload_percent}% ({s.open_points}/{s.capacity_points} điểm)
+                              {s.tasks_overdue > 0 && ` · ${s.tasks_overdue} việc quá hạn`}
+                              {s.recent_kpi != null && ` · KPI gần nhất ${s.recent_kpi}`}
+                            </p>
+                            <ul className="mt-1 space-y-px">
+                              {s.reasons.map((r, k) => (
+                                <li key={k} className="text-[11px] text-navy-500">· {r}</li>
+                              ))}
+                            </ul>
+                          </button>
+                        ))}
+
+                        {goiY.excluded.length > 0 && (
+                          <div>
+                            <button
+                              type="button" onClick={() => setMoBiLoai(!moBiLoai)}
+                              className="text-[11px] text-navy-500 hover:text-navy-700 flex items-center gap-1 py-1"
+                            >
+                              {moBiLoai ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                              {goiY.excluded.length} cán bộ bị loại khỏi danh sách
+                            </button>
+                            {moBiLoai && (
+                              <ul className="space-y-1">
+                                {goiY.excluded.map(e => (
+                                  <li key={e.id} className="text-[11px] text-navy-600 bg-navy-50 rounded-sm px-2 py-1">
+                                    <strong className="text-navy-800">{e.name}</strong>
+                                    {e.rank_position && <span className="text-navy-400"> · {e.rank_position}</span>}
+                                    <span className="block text-navy-500">{e.reason}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+
+                        <p className="text-[10px] text-navy-400 leading-relaxed flex items-start gap-1 pt-1">
+                          <Info size={11} className="shrink-0 mt-0.5" />
+                          {goiY.explanation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {task && (
                   <div className="mt-3 pt-3 border-t border-navy-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">

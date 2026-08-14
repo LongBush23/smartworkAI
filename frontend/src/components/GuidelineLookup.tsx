@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BookOpen, Search, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { aiApi } from '../lib/ai-api';
-import type { GuidelineAnswer } from '../lib/ai-api';
+import type { GuidelineAnswer, GuidelineClause } from '../lib/ai-api';
 
 const GOI_Y = [
   'Sửa 3 lần thì tính bao nhiêu phần trăm?',
@@ -17,6 +17,22 @@ export const GuidelineLookup = ({ collapsed = true }: { collapsed?: boolean }) =
   const [q, setQ] = useState('');
   const [result, setResult] = useState<GuidelineAnswer | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Danh mục toàn bộ điều khoản đã lập chỉ mục — để tra cứu khi chưa biết hỏi gì
+  const [dieuKhoan, setDieuKhoan] = useState<GuidelineClause[] | null>(null);
+  const [moDanhMuc, setMoDanhMuc] = useState(false);
+  const [dangMo, setDangMo] = useState<string | null>(null);
+
+  const xemDanhMuc = async () => {
+    if (moDanhMuc) { setMoDanhMuc(false); return; }
+    setMoDanhMuc(true);
+    if (dieuKhoan) return;
+    try {
+      setDieuKhoan(await aiApi.allClauses());
+    } catch {
+      setDieuKhoan([]);
+    }
+  };
 
   const ask = async (question: string) => {
     if (!question.trim()) return;
@@ -105,6 +121,41 @@ export const GuidelineLookup = ({ collapsed = true }: { collapsed?: boolean }) =
               </p>
             </div>
           )}
+
+          {/* Danh mục điều khoản — dùng khi chưa biết cần hỏi gì */}
+          <div className="border-t border-navy-100 pt-2">
+            <button
+              onClick={xemDanhMuc}
+              className="text-[11px] text-navy-600 hover:text-navy-800 flex items-center gap-1"
+            >
+              {moDanhMuc ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              Xem toàn bộ điều khoản đã lập chỉ mục
+              {dieuKhoan && ` (${dieuKhoan.length})`}
+            </button>
+
+            {moDanhMuc && (
+              <div className="mt-2 space-y-1">
+                {dieuKhoan === null && <p className="text-xs text-navy-400">Đang tải…</p>}
+                {dieuKhoan?.map(c => (
+                  <div key={c.id} className="border border-navy-100 rounded-sm">
+                    <button
+                      onClick={() => setDangMo(dangMo === c.id ? null : c.id)}
+                      className="w-full text-left px-3 py-1.5 flex items-center gap-1.5 hover:bg-navy-50/60"
+                    >
+                      <FileText size={12} className="text-navy-400 shrink-0" />
+                      <span className="text-xs text-navy-800">{c.title}</span>
+                      <span className="ml-auto text-[10px] text-navy-400 shrink-0">{c.source}</span>
+                    </button>
+                    {dangMo === c.id && (
+                      <p className="px-3 pb-2 text-xs text-navy-700 whitespace-pre-line leading-relaxed border-t border-navy-100 pt-2">
+                        {c.text}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
