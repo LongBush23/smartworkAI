@@ -148,14 +148,25 @@ async def get_employee_profile(
 
 @router.get("/", response_model=List[UserResponse])
 async def get_employees(role: Optional[str] = None, current_user: dict = Depends(get_current_user)):
-    """Get employees. Directors see only their department."""
+    """
+    Danh sách cán bộ. Lãnh đạo đơn vị chỉ thấy đơn vị mình.
+
+    Mặc định trả cả Trưởng phòng: họ cũng được giao nhiệm vụ và cũng được tính
+    điểm KPI trên chính những nhiệm vụ đó, nên phải có mặt ở ô chọn cán bộ thực
+    hiện lẫn trang quản lý cán bộ. Trước đây chỉ trả staff và leader nên 7 Trưởng
+    phòng biến mất khỏi cả hai chỗ — trang Cán bộ gọi kèm `role=''` (chuỗi rỗng,
+    falsy) nên cũng rơi vào đúng nhánh mặc định này.
+
+    Riêng quản trị hệ thống vẫn loại: đó là tài khoản vận hành, không phải cán bộ
+    được giao việc và đánh giá.
+    """
     query = {}
-    
+
     if role:
         query["role"] = role
     else:
-        query["role"] = {"$in": ["staff", "leader"]}
-    
+        query["role"] = {"$in": ["staff", "leader", "director"]}
+
     # Department scoping for directors
     user_role = current_user.get("role", "staff")
     if user_role == "director" and current_user.get("department_id"):
