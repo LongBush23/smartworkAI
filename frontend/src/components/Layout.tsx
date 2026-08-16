@@ -8,6 +8,7 @@ import {
 import api from '../lib/api';
 import { CLEARANCE_LABELS } from '../lib/task-api';
 import { layMe, xoaCacheMe } from '../lib/me';
+import { HopTraCuu } from './HopTraCuu';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Quản trị hệ thống',
@@ -296,6 +297,9 @@ const Layout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Tra cứu Hướng dẫn — mở được ở mọi trang, xử lý tại chỗ */}
+      <HopTraCuu />
     </div>
   );
 };
