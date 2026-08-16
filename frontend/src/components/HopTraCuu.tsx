@@ -1,41 +1,39 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  MessageCircleQuestion, X, Send, FileText, ChevronDown, ChevronRight, BookOpen,
+  MessageCircleQuestion, X, Send, FileText, ChevronDown, ChevronRight, Bot, Database,
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { aiApi } from '../lib/ai-api';
-import type { GuidelineAnswer, GuidelineClause } from '../lib/ai-api';
+import type { GuidelineClause } from '../lib/ai-api';
+import { troLyApi, NHAN_CONG_CU } from '../lib/tro-ly-api';
+import type { TraLoiTroLy, LuotTruoc } from '../lib/tro-ly-api';
 
 /**
- * Hộp tra cứu Hướng dẫn 20-HD/ĐUCA, mở được ở mọi trang.
+ * Trợ lý hỏi đáp, mở được ở mọi trang.
  *
- * Trả lời TẠI CHỖ bằng máy quy tắc + tìm điều khoản của backend, không gọi
- * dịch vụ ngoài. Câu trả lời về con số lấy trực tiếp từ hằng số của bộ máy
- * chấm điểm nên luôn khớp với điều hệ thống thực sự tính.
- *
- * Cố ý KHÔNG dựng thành trợ lý hội thoại tổng quát: đây là văn bản pháp quy,
- * cán bộ cần nguyên văn điều khoản để trích dẫn chứ không cần bản diễn giải
- * có thể sai lệch.
+ * Hỏi gì cũng đi qua /api/tro-ly/hoi. Máy chủ chọn công cụ để lấy số liệu rồi
+ * mới diễn đạt lại — nên câu trả lời bám đúng dữ liệu người hỏi có quyền xem.
+ * Thiếu khoá hoặc dịch vụ trục trặc thì tự lui về máy tra cứu tại chỗ, hộp chat
+ * nói rõ đang ở chế độ nào chứ không giấu.
  */
 
 const GOI_Y = [
+  'Tôi còn mấy việc quá hạn?',
+  'KPI của tôi năm nay thế nào?',
   'Sửa 3 lần thì tính bao nhiêu phần trăm?',
-  'Nhắc nhở 2 lần được bao nhiêu điểm?',
-  'KPI 65 thuộc nhóm mấy?',
-  'Công thức tính KPI cho lãnh đạo, chỉ huy',
-  'Tiêu chí chung tối đa bao nhiêu điểm?',
   'Quy trình đánh giá gồm mấy bước?',
 ];
 
-interface LuotHoi {
+interface Luot {
   hoi: string;
-  dap: GuidelineAnswer | null;
+  dap: TraLoiTroLy | null;
   loi?: boolean;
 }
 
 export const HopTraCuu = () => {
   const [mo, setMo] = useState(false);
   const [q, setQ] = useState('');
-  const [lich, setLich] = useState<LuotHoi[]>([]);
+  const [lich, setLich] = useState<Luot[]>([]);
   const [dangHoi, setDangHoi] = useState(false);
 
   const [dieuKhoan, setDieuKhoan] = useState<GuidelineClause[] | null>(null);
@@ -45,14 +43,10 @@ export const HopTraCuu = () => {
   const cuoiRef = useRef<HTMLDivElement>(null);
   const oNhapRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (mo) oNhapRef.current?.focus();
-  }, [mo]);
-
+  useEffect(() => { if (mo) oNhapRef.current?.focus(); }, [mo]);
   useEffect(() => {
     cuoiRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [lich, dangHoi]);
-
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMo(false); };
     window.addEventListener('keydown', esc);
@@ -64,8 +58,16 @@ export const HopTraCuu = () => {
     if (!c || dangHoi) return;
     setQ('');
     setDangHoi(true);
+
+    // Gửi kèm vài lượt gần nhất để trợ lý hiểu câu hỏi nối tiếp
+    const lichSu: LuotTruoc[] = [];
+    for (const l of lich.slice(-3)) {
+      lichSu.push({ vai: 'user', text: l.hoi });
+      if (l.dap) lichSu.push({ vai: 'model', text: l.dap.tra_loi });
+    }
+
     try {
-      const dap = await aiApi.searchGuideline(c);
+      const dap = await troLyApi.hoi(c, lichSu);
       setLich(l => [...l, { hoi: c, dap }]);
     } catch {
       setLich(l => [...l, { hoi: c, dap: null, loi: true }]);
@@ -85,7 +87,7 @@ export const HopTraCuu = () => {
     return (
       <button
         onClick={() => setMo(true)}
-        title="Tra cứu Hướng dẫn 20-HD/ĐUCA"
+        title="Hỏi trợ lý"
         className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full bg-navy-700 text-white
                    shadow-lg shadow-navy-900/30 flex items-center justify-center
                    hover:bg-navy-800 transition-colors"
@@ -100,15 +102,14 @@ export const HopTraCuu = () => {
       className="fixed z-40 bg-white border border-navy-300 shadow-2xl shadow-navy-900/25
                  flex flex-col rounded-sm
                  inset-x-3 bottom-3 top-16
-                 sm:inset-x-auto sm:top-auto sm:right-5 sm:bottom-5 sm:w-[400px] sm:h-[560px]"
+                 sm:inset-x-auto sm:top-auto sm:right-5 sm:bottom-5 sm:w-[420px] sm:h-[600px]"
     >
-      {/* Tiêu đề */}
       <div className="h-12 shrink-0 bg-navy-700 text-white flex items-center px-3 gap-2">
-        <BookOpen size={16} className="shrink-0" />
+        <Bot size={17} className="shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold leading-tight">Tra cứu Hướng dẫn</p>
+          <p className="text-[13px] font-semibold leading-tight">Trợ lý hệ thống</p>
           <p className="text-[10px] text-navy-200 leading-tight truncate">
-            Số 20-HD/ĐUCA · trả lời tại chỗ
+            Hỏi về nhiệm vụ, điểm KPI và Hướng dẫn 20-HD/ĐUCA
           </p>
         </div>
         <button onClick={() => setMo(false)} className="text-navy-200 hover:text-white shrink-0">
@@ -116,13 +117,12 @@ export const HopTraCuu = () => {
         </button>
       </div>
 
-      {/* Hội thoại */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
         {lich.length === 0 && (
           <div className="space-y-3">
             <p className="text-xs text-navy-600 leading-relaxed">
-              Hỏi về cách tính điểm theo Hướng dẫn. Câu trả lời về con số được lấy trực tiếp
-              từ chính bộ máy chấm điểm của hệ thống, kèm trích dẫn nguyên văn điều khoản.
+              Hỏi về nhiệm vụ và điểm KPI của đồng chí, hoặc về cách tính điểm theo Hướng dẫn.
+              Trợ lý chỉ đọc được dữ liệu trong phạm vi đồng chí có quyền xem.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {GOI_Y.map(s => (
@@ -137,33 +137,37 @@ export const HopTraCuu = () => {
 
         {lich.map((l, i) => (
           <div key={i} className="space-y-2">
-            {/* Câu hỏi */}
             <div className="flex justify-end">
-              <p className="max-w-[85%] bg-navy-700 text-white text-xs px-3 py-2 rounded-sm">
-                {l.hoi}
-              </p>
+              <p className="max-w-[85%] bg-navy-700 text-white text-xs px-3 py-2 rounded-sm">{l.hoi}</p>
             </div>
 
-            {/* Trả lời */}
             {l.loi || !l.dap ? (
               <p className="text-xs text-crimson-700 bg-crimson-50 border border-crimson-200 px-3 py-2 rounded-sm">
-                Không tra cứu được. Kiểm tra kết nối tới máy chủ rồi thử lại.
+                Không hỏi được. Kiểm tra kết nối tới máy chủ rồi thử lại.
               </p>
             ) : (
               <div className="space-y-2">
-                {l.dap.rule_answer ? (
-                  <div className="bg-navy-50 border-l-2 border-navy-600 px-3 py-2">
-                    <p className="text-[10px] text-navy-500">{l.dap.rule_answer.question_understood}</p>
-                    <p className="text-sm font-bold text-navy-800 mt-0.5">{l.dap.rule_answer.answer}</p>
-                    <p className="text-[11px] text-navy-600 mt-1">{l.dap.rule_answer.detail}</p>
+                <div className="text-xs text-navy-800 leading-relaxed
+                                [&_p]:mb-1.5 [&_p:last-child]:mb-0
+                                [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:space-y-0.5
+                                [&_ol]:list-decimal [&_ol]:pl-4
+                                [&_strong]:font-semibold [&_strong]:text-navy-900">
+                  <ReactMarkdown>{l.dap.tra_loi}</ReactMarkdown>
+                </div>
+
+                {/* Nguồn số liệu — để người đọc biết câu trả lời dựa vào đâu */}
+                {l.dap.cong_cu_da_dung.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Database size={10} className="text-navy-400" />
+                    {[...new Set(l.dap.cong_cu_da_dung)].map(c => (
+                      <span key={c} className="text-[9px] px-1.5 py-0.5 bg-navy-50 border border-navy-200 rounded-sm text-navy-600">
+                        {NHAN_CONG_CU[c] ?? c}
+                      </span>
+                    ))}
                   </div>
-                ) : (
-                  <p className="text-[11px] text-navy-500 italic">
-                    Không nhận diện được câu hỏi về số. Dưới đây là các điều khoản liên quan nhất.
-                  </p>
                 )}
 
-                {l.dap.clauses.map(c => (
+                {l.dap.dieu_khoan?.map(c => (
                   <div key={c.id} className="border border-navy-100 rounded-sm">
                     <div className="px-2.5 py-1.5 bg-navy-50/60 border-b border-navy-100 flex items-start gap-1.5">
                       <FileText size={11} className="text-navy-400 shrink-0 mt-0.5" />
@@ -175,6 +179,12 @@ export const HopTraCuu = () => {
                     <p className="px-2.5 pb-1.5 text-[10px] text-navy-400">{c.source}</p>
                   </div>
                 ))}
+
+                {l.dap.che_do === 'tai_cho' && (
+                  <p className="text-[10px] text-gold-700 bg-gold-50 border border-gold-200 px-2 py-1 rounded-sm">
+                    Đang trả lời bằng máy tra cứu tại chỗ{l.dap.ghi_chu ? ` — ${l.dap.ghi_chu}` : ''}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -182,7 +192,6 @@ export const HopTraCuu = () => {
 
         {dangHoi && <p className="text-[11px] text-navy-400">Đang tra cứu…</p>}
 
-        {/* Danh mục điều khoản */}
         {lich.length === 0 && (
           <div className="border-t border-navy-100 pt-2">
             <button onClick={xemDanhMuc}
@@ -190,7 +199,6 @@ export const HopTraCuu = () => {
               {moDanhMuc ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               Xem toàn bộ điều khoản đã lập chỉ mục{dieuKhoan ? ` (${dieuKhoan.length})` : ''}
             </button>
-
             {moDanhMuc && (
               <div className="mt-2 space-y-1">
                 {dieuKhoan === null && <p className="text-[11px] text-navy-400">Đang tải…</p>}
@@ -203,9 +211,7 @@ export const HopTraCuu = () => {
                     </button>
                     {dangXem === c.id && (
                       <p className="px-2.5 pb-2 pt-1.5 text-[11px] text-navy-700 whitespace-pre-line
-                                    leading-relaxed border-t border-navy-100">
-                        {c.text}
-                      </p>
+                                    leading-relaxed border-t border-navy-100">{c.text}</p>
                     )}
                   </div>
                 ))}
@@ -217,30 +223,20 @@ export const HopTraCuu = () => {
         <div ref={cuoiRef} />
       </div>
 
-      {/* Ô nhập */}
-      <form
-        onSubmit={e => { e.preventDefault(); hoi(q); }}
-        className="shrink-0 border-t border-navy-200 p-2 flex gap-2"
-      >
-        <input
-          ref={oNhapRef}
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          placeholder="Nhập câu hỏi về cách tính điểm…"
-          className="flex-1 px-2.5 py-1.5 border border-navy-200 rounded-sm text-xs"
-        />
-        <button
-          type="submit"
-          disabled={dangHoi || !q.trim()}
-          className="px-2.5 bg-navy-700 text-white rounded-sm hover:bg-navy-800 disabled:opacity-40 shrink-0"
-        >
+      <form onSubmit={e => { e.preventDefault(); hoi(q); }}
+        className="shrink-0 border-t border-navy-200 p-2 flex gap-2">
+        <input ref={oNhapRef} value={q} onChange={e => setQ(e.target.value)}
+          placeholder="Hỏi về nhiệm vụ, điểm KPI, cách tính điểm…"
+          className="flex-1 px-2.5 py-1.5 border border-navy-200 rounded-sm text-xs" />
+        <button type="submit" disabled={dangHoi || !q.trim()}
+          className="px-2.5 bg-navy-700 text-white rounded-sm hover:bg-navy-800 disabled:opacity-40 shrink-0">
           <Send size={14} />
         </button>
       </form>
 
       <p className="shrink-0 px-3 pb-2 text-[9px] text-navy-400 leading-tight">
-        Trả lời dựa trên Hướng dẫn số 20-HD/ĐUCA, xử lý tại chỗ trong hệ thống.
-        Không gửi dữ liệu ra dịch vụ bên ngoài.
+        Trợ lý chỉ đọc dữ liệu trong phạm vi đồng chí có quyền xem. Nhiệm vụ có độ mật
+        chỉ được thống kê số lượng, không nêu tên. Trợ lý không giao việc và không chấm điểm.
       </p>
     </div>
   );

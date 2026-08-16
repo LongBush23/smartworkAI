@@ -27,6 +27,13 @@ services:
       # Chỉ cần đặt khi dùng tên miền riêng, ví dụ:
       #   https://kpi.bocongan.gov.vn
       # Giá trị đặt ở đây được CỘNG THÊM vào danh sách mặc định.
+      # Trợ lý hội thoại — chỗ DUY NHẤT hệ thống gọi ra dịch vụ bên ngoài.
+      # KHÔNG BẮT BUỘC: bỏ trống thì trợ lý tự lui về máy tra cứu tại chỗ.
+      - key: GEMINI_API_KEY
+        sync: false
+      # Không ghim phiên bản cố định: gemini-2.5-* đã bị ngừng cấp cho khoá mới.
+      - key: GEMINI_MODEL
+        value: gemini-flash-lite-latest
       - key: CORS_ORIGINS
         sync: false
       # Cờ này chỉ mở khoá danh sách mật khẩu mặc định phổ biến

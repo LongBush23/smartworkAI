@@ -20,6 +20,19 @@ MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME", "smartwork")
 SECRET_KEY = os.getenv("SECRET_KEY", "smartwork_super_secret_key")
 
+# Trợ lý hội thoại. Đây là chỗ DUY NHẤT hệ thống gọi ra dịch vụ bên ngoài —
+# xem rào chắn ở backend/services/tro_ly/__init__.py.
+# Bỏ trống khoá thì trợ lý tự lui về máy tra cứu tại chỗ, không hỏng gì.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+# Chọn model theo hai bài học đã trả giá:
+#   1. KHÔNG ghim phiên bản cố định. `gemini-2.5-flash` từng chạy tốt, nay trả
+#      404 "no longer available to new users". Bí danh `-latest` tự theo bản mới.
+#   2. Bản `flash-lite` có hạn mức miễn phí rộng hơn hẳn. `gemini-3.7-flash` chỉ
+#      cho 20 lượt/ngày (GenerateRequestsPerDayPerProjectPerModel-FreeTier) —
+#      mỗi câu hỏi có gọi công cụ tốn 2-3 lượt nên chỉ đủ ~7 câu rồi tắt.
+# Đổi bằng biến GEMINI_MODEL nếu nâng gói trả phí.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest").strip()
+
 
 def _flag(name: str, default: bool = False) -> bool:
     raw = os.getenv(name)
