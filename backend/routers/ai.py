@@ -13,9 +13,24 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.dependencies import require_leader_or_above, require_director_or_above, require_admin
 from backend.security import get_current_user
+from backend.services import so_dang_ky_mo_hinh
 from backend.services.ai import anomaly, assignment, guideline, risk
 
 router = APIRouter()
+
+
+# ================= SỔ ĐĂNG KÝ MÔ HÌNH =================
+
+@router.get("/models")
+async def models(current_user: dict = Depends(require_leader_or_above)):
+    """
+    Toàn bộ mô hình của hệ thống: mục đích, thuật toán, lý do chọn thuật toán,
+    tham số đang dùng, và chất lượng thực tế của hai mô hình hồi quy.
+
+    CHỈ ĐỌC. Khác `POST /retrain`, endpoint này không huấn luyện lại mô hình mà
+    cả đơn vị đang dùng — mở trang xem không được làm đổi thứ đang chạy.
+    """
+    return await so_dang_ky_mo_hinh.danh_sach()
 
 
 def _scope_department(current_user: dict, department_id: Optional[str]) -> Optional[str]:

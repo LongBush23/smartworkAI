@@ -484,27 +484,63 @@ async def predict_officer_risk(
     }
 
 
+def _bao_cao(b: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Phần chất lượng mô hình mang ra ngoài được — bỏ lại đối tượng model và scaler.
+
+    Kèm luôn mô tả từng đặc trưng: bảng hệ số chỉ có tên biến thì người thẩm định
+    phải mở mã nguồn mới hiểu `xu_the_kpi` nghĩa là gì, kèm mô tả thì đọc được ngay.
+    Sắp theo trị tuyệt đối của hệ số để đặc trưng nặng nhất nằm trên cùng.
+    """
+    he_so = b.get("coefficients") or {}
+    return {
+        "usable": b.get("usable"),
+        "reason": b.get("reason"),
+        "auc": b.get("auc"),
+        "n_samples": b.get("n_samples"),
+        "n_positive": b.get("n_positive"),
+        "confusion": b.get("confusion"),
+        "coefficients": he_so,
+        "dac_trung": [
+            {
+                "ten": ten,
+                "he_so": gia_tri,
+                "khi_cao": _MO_TA_DAC_TRUNG.get(ten, (ten, ten))[0],
+                "khi_thap": _MO_TA_DAC_TRUNG.get(ten, (ten, ten))[1],
+            }
+            for ten, gia_tri in sorted(he_so.items(), key=lambda kv: -abs(kv[1]))
+        ],
+        "trained_at": b.get("trained_at"),
+    }
+
+
+async def tom_tat_chat_luong() -> Dict[str, Any]:
+    """
+    Chất lượng hai mô hình ĐANG dùng, không huấn luyện lại nếu đã có trong bộ đệm.
+
+    Tách khỏi `retrain_all` là có chủ đích: trang xem mô hình chỉ cần đọc. Lãnh
+    đạo mở trang ra không được vô tình huấn luyện lại mô hình mà cả đơn vị đang
+    dùng — huấn luyện lại phải là một hành động cố ý, của quản trị hệ thống.
+    """
+    return {
+        "task_late": _bao_cao(await _ensure("task_late")),
+        "group3": _bao_cao(await _ensure("group3")),
+        "auc_threshold": AUC_TOI_THIEU,
+        "so_mau_toi_thieu": SO_MAU_TOI_THIEU,
+    }
+
+
 async def retrain_all() -> Dict[str, Any]:
     """Huấn luyện lại cả hai mô hình, trả về chất lượng để người quản trị thẩm định."""
     _cache.clear()
     late = await train_task_late_model()
     group3 = await train_group3_model()
 
-    def report(b):
-        return {
-            "usable": b.get("usable"),
-            "reason": b.get("reason"),
-            "auc": b.get("auc"),
-            "n_samples": b.get("n_samples"),
-            "n_positive": b.get("n_positive"),
-            "confusion": b.get("confusion"),
-            "coefficients": b.get("coefficients"),
-        }
-
     return {
-        "task_late": report(late),
-        "group3": report(group3),
+        "task_late": _bao_cao(late),
+        "group3": _bao_cao(group3),
         "auc_threshold": AUC_TOI_THIEU,
+        "so_mau_toi_thieu": SO_MAU_TOI_THIEU,
         "note": (
             "AUC dưới ngưỡng nghĩa là mô hình chưa đáng tin và sẽ không được dùng để "
             "cảnh báo. Thà không có cảnh báo còn hơn cảnh báo sai."

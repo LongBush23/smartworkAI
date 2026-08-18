@@ -31,6 +31,7 @@ const KPICriteria    = lazy(() => import('./pages/KPICriteria'));
 const Organization   = lazy(() => import('./pages/Organization'));
 const EmployeeDetail = lazy(() => import('./pages/EmployeeDetail'));
 const QualityReview  = lazy(() => import('./pages/QualityReview'));
+const MoHinhAI       = lazy(() => import('./pages/MoHinhAI'));
 
 const DangTai = () => (
   <div className="flex justify-center items-center h-64">
@@ -66,6 +67,7 @@ function App() {
                   <Route path="evaluate" element={<KPIEvaluate />} />
                   <Route path="criteria" element={<KPICriteria />} />
                   <Route path="results" element={<KPIResults />} />
+                  <Route path="models" element={<MoHinhAI />} />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" />} />

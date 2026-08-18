@@ -5,8 +5,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../lib/api';
-import { aiApi } from '../lib/ai-api';
+import { aiApi, NHAN_THANH_PHAN } from '../lib/ai-api';
 import type { AssignmentResult } from '../lib/ai-api';
+import { KhungMoHinh } from './KhungMoHinh';
 import {
   PRODUCT_LABELS, TASK_STATUS_LABELS, TASK_TYPE_LABELS,
   CLASSIFICATION_LABELS, CLASSIFICATION_COLORS, CLASSIFICATION_RANK,
@@ -16,6 +17,61 @@ import {
   qualityTierFromRevisions, timelineTierFromReminders,
   QUALITY_PERCENT, TIMELINE_PERCENT,
 } from '../lib/kpi-api';
+
+// Màu 5 thành phần của điểm phù hợp. Chỉ cần phân biệt được, nên dùng thang navy
+// đi từ đậm sang nhạt rồi sang vàng đồng — không dùng đỏ đô vì màu đó trong hệ
+// thống mang nghĩa cảnh báo, ở đây không có gì để cảnh báo.
+const MAU_THANH_PHAN: Record<string, string> = {
+  du_dia_tai_viec: 'bg-navy-700',
+  chat_luong_lich_su: 'bg-navy-500',
+  tien_do_lich_su: 'bg-navy-300',
+  khong_qua_han: 'bg-gold-500',
+  kpi_gan_nhat: 'bg-gold-300',
+};
+
+/**
+ * Điểm phù hợp tách theo 5 thành phần của công thức.
+ *
+ * Máy chủ vẫn trả `score_breakdown` và `weights` từ trước, nhưng giao diện chỉ in
+ * đúng một con số tổng — nên người dùng thấy "82,3" mà không biết vì sao, và cái
+ * lợi thế lớn nhất của công thức có trọng số (giải thích được từng thành phần) bị
+ * bỏ không. Thanh dưới đây vẽ đúng phần điểm mỗi thành phần góp vào tổng.
+ */
+const ThanhThanhPhan = ({
+  breakdown, weights,
+}: {
+  breakdown: Record<string, number>;
+  weights: Record<string, number>;
+}) => {
+  const khoa = Object.keys(weights);
+  if (khoa.length === 0) return null;
+
+  return (
+    <div className="mt-1.5">
+      <div className="flex h-1.5 w-full bg-navy-100 rounded-sm overflow-hidden">
+        {khoa.map(k => (
+          <div
+            key={k}
+            className={MAU_THANH_PHAN[k] ?? 'bg-navy-400'}
+            style={{ width: `${breakdown[k] ?? 0}%` }}
+            title={`${NHAN_THANH_PHAN[k] ?? k}: ${(breakdown[k] ?? 0).toFixed(1)} / ${(weights[k] * 100).toFixed(0)} điểm`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mt-1">
+        {khoa.map(k => (
+          <span key={k} className="flex items-center gap-1 text-[10px] text-navy-500">
+            <span className={`h-2 w-2 rounded-sm shrink-0 ${MAU_THANH_PHAN[k] ?? 'bg-navy-400'}`} />
+            {NHAN_THANH_PHAN[k] ?? k}
+            <span className="tabular text-navy-700">
+              {(breakdown[k] ?? 0).toFixed(1)}/{(weights[k] * 100).toFixed(0)}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 interface Props {
   /** null = giao nhiệm vụ mới, Task = xem/sửa */
@@ -437,6 +493,7 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
 
                 {/* Gợi ý phân công — mô hình chỉ xếp hạng, người có thẩm quyền quyết định */}
                 {canEdit && !task?.is_redacted && (
+                  <KhungMoHinh ma="goi_y_phan_cong">
                   <div className="mt-3 pt-3 border-t border-navy-100">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-[11px] text-navy-600 flex items-start gap-1.5">
@@ -483,6 +540,7 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
                               {s.tasks_overdue > 0 && ` · ${s.tasks_overdue} việc quá hạn`}
                               {s.recent_kpi != null && ` · KPI gần nhất ${s.recent_kpi}`}
                             </p>
+                            <ThanhThanhPhan breakdown={s.score_breakdown} weights={goiY.weights} />
                             <ul className="mt-1 space-y-px">
                               {s.reasons.map((r, k) => (
                                 <li key={k} className="text-[11px] text-navy-500">· {r}</li>
@@ -521,6 +579,7 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
                       </div>
                     )}
                   </div>
+                  </KhungMoHinh>
                 )}
 
                 {task && (

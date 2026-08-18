@@ -26,6 +26,20 @@ export interface AssigneeSuggestion {
   score_breakdown: Record<string, number>;
 }
 
+/**
+ * Nhãn 5 thành phần của công thức gợi ý phân công.
+ *
+ * Khoá phải trùng với TRONG_SO trong backend/services/ai/assignment.py — có test
+ * khoá lại, vì lệch khoá thì thanh thành phần lặng lẽ mất một cột chứ không báo lỗi.
+ */
+export const NHAN_THANH_PHAN: Record<string, string> = {
+  du_dia_tai_viec: 'Dư địa tải việc',
+  chat_luong_lich_su: 'Chất lượng lịch sử',
+  tien_do_lich_su: 'Tiến độ lịch sử',
+  khong_qua_han: 'Không tồn việc quá hạn',
+  kpi_gan_nhat: 'KPI gần nhất',
+};
+
 export interface ExcludedOfficer {
   id: string;
   name: string;
@@ -140,6 +154,49 @@ export interface GuidelineAnswer {
   precision_note: string;
 }
 
+// ===== Sổ đăng ký mô hình =====
+
+export interface DacTrungMoHinh {
+  ten: string;
+  he_so: number;
+  khi_cao: string;
+  khi_thap: string;
+}
+
+export interface ChatLuongMoHinh {
+  usable: boolean | null;
+  reason: string | null;
+  auc: number | null;
+  n_samples: number | null;
+  n_positive: number | null;
+  confusion: { tn: number; fp: number; fn: number; tp: number } | null;
+  coefficients: Record<string, number>;
+  dac_trung: DacTrungMoHinh[];
+  trained_at: string | null;
+}
+
+export interface MoHinh {
+  ma: string;
+  so: number;
+  ten: string;
+  muc_dich: string;
+  thuat_toan: string;
+  vi_sao: string;
+  noi_chay: 'tai_cho' | 'goi_ra_ngoai';
+  ma_nguon: string;
+  dung_o: { nhan: string; duong_dan: string }[];
+  tham_so: { nhan: string; gia_tri: string }[];
+  chat_luong: ChatLuongMoHinh | null;
+}
+
+export interface SoDangKyMoHinh {
+  mo_hinh: MoHinh[];
+  auc_threshold: number;
+  so_mau_toi_thieu: number;
+  ranh_gioi: { tieu_de: string; noi_dung: string }[];
+  ghi_chu_du_lieu_mau: string;
+}
+
 export const aiApi = {
   suggestAssignee: async (params: {
     classification?: string;
@@ -180,6 +237,11 @@ export const aiApi = {
 
   allClauses: async () => {
     const res = await api.get<GuidelineClause[]>('/ai/guideline/clauses');
+    return res.data;
+  },
+
+  moHinh: async () => {
+    const res = await api.get<SoDangKyMoHinh>('/ai/models');
     return res.data;
   },
 

@@ -3,6 +3,7 @@ import { kpiApi } from '../lib/kpi-api';
 import type { KPIEvaluation, TaskKPIScore } from '../lib/kpi-api';
 import { Check, ClipboardList, Send, ChevronRight } from 'lucide-react';
 import { GuidelineLookup } from '../components/GuidelineLookup';
+import { KhungMoHinh } from '../components/KhungMoHinh';
 import { layMe } from '../lib/me';
 
 const STEP_LABELS = [
@@ -188,7 +189,9 @@ const KPIEvaluate = () => {
         </div>
       </div>
 
-      <GuidelineLookup />
+      <KhungMoHinh ma="tra_cuu_huong_dan">
+        <GuidelineLookup />
+      </KhungMoHinh>
 
       {!selectedEval ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">

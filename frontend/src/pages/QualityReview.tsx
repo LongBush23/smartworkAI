@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ShieldAlert, RefreshCw, Info, ChevronDown, ChevronRight } from 'lucide-react';
 import { aiApi, SEVERITY_LABELS, SEVERITY_COLORS } from '../lib/ai-api';
 import type { AnomalyResult } from '../lib/ai-api';
+import { KhungMoHinh } from '../components/KhungMoHinh';
 import { layMe } from '../lib/me';
 
 const QualityReview = () => {
@@ -38,8 +40,11 @@ const QualityReview = () => {
       setRetraining(true);
       const r = await aiApi.retrain();
       const late = r.task_late, g3 = r.group3;
+      // Toast chỉ đủ chỗ cho hai con số; ma trận nhầm lẫn và bảng hệ số xem ở
+      // trang Mô hình hỗ trợ ra quyết định, nên nói luôn để không mất dữ liệu đó.
       toast.success(
-        `Đã huấn luyện lại · Trễ hạn AUC ${late.auc ?? '—'} · Nhóm 3 AUC ${g3.auc ?? '—'}`,
+        `Đã huấn luyện lại · Trễ hạn AUC ${late.auc ?? '—'} · Nhóm 3 AUC ${g3.auc ?? '—'}`
+        + '\nXem ma trận nhầm lẫn và hệ số ở trang Mô hình hỗ trợ ra quyết định.',
         { duration: 6000 },
       );
     } catch {
@@ -105,9 +110,16 @@ const QualityReview = () => {
       </div>
 
       {/* Danh sách dấu hiệu */}
+      <KhungMoHinh ma="cham_hinh_thuc">
       <div className="bg-white border border-navy-200 rounded-sm overflow-hidden">
-        <div className="px-4 py-2 border-b border-navy-200 bg-navy-50">
+        <div className="px-4 py-2 border-b border-navy-200 bg-navy-50 flex items-center justify-between gap-2">
           <p className="section-label">Dấu hiệu phát hiện được</p>
+          <Link
+            to="/kpi/models#cham_hinh_thuc"
+            className="text-[10px] text-navy-500 hover:text-navy-800 underline decoration-navy-300 shrink-0"
+          >
+            Mô hình 3 · Phát hiện chấm điểm hình thức
+          </Link>
         </div>
 
         {!data || data.flags.length === 0 ? (
@@ -140,6 +152,7 @@ const QualityReview = () => {
           </div>
         )}
       </div>
+      </KhungMoHinh>
 
       {/* Ngưỡng áp dụng — công khai để người đọc tự thẩm định */}
       <div className="bg-white border border-navy-200 rounded-sm">

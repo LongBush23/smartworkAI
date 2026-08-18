@@ -1,8 +1,45 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, TrendingDown, Clock, Info, Lock } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Clock, Info, Lock, ArrowUp, ArrowDown } from 'lucide-react';
 import { aiApi } from '../lib/ai-api';
 import type { OfficerRisk, TaskRisk } from '../lib/ai-api';
+import { KhungMoHinh } from './KhungMoHinh';
+
+/**
+ * Căn cứ mà mô hình nêu cho một cảnh báo.
+ *
+ * Mỗi lý do do `_explain()` trong services/ai/risk.py sinh ra đều có dạng
+ * "quan sát được gì → tăng/giảm nguy cơ". Trước đây cả dãy lý do bị nối bằng dấu
+ * chấm giữa rồi in bằng chữ 10px màu nhạt nhất trên thẻ — tức phần GIẢI THÍCH
+ * ĐƯỢC, thứ đắt nhất của mô hình, lại là thứ mắt bỏ qua đầu tiên. Nay mỗi căn cứ
+ * là một chip có mũi tên chỉ chiều tác động.
+ */
+const ChipCanCu = ({ lyDo }: { lyDo: string[] }) => {
+  if (lyDo.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+      <span className="text-[10px] text-navy-400 mr-0.5">Mô hình căn cứ vào:</span>
+      {lyDo.map((r, i) => {
+        const [quanSat, huong] = r.split('→').map(s => s.trim());
+        const tang = (huong ?? '').includes('tăng');
+        return (
+          <span
+            key={i}
+            title={huong ? `${quanSat} → ${huong}` : quanSat}
+            className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-px rounded-sm border ${
+              tang
+                ? 'bg-white border-crimson-200 text-crimson-800'
+                : 'bg-white border-navy-200 text-navy-600'
+            }`}
+          >
+            {tang ? <ArrowUp size={9} className="shrink-0" /> : <ArrowDown size={9} className="shrink-0" />}
+            {quanSat}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
 
 /**
  * Khối cảnh báo sớm cho lãnh đạo, chỉ huy.
@@ -81,11 +118,20 @@ export const EarlyWarning = () => {
         <p className="section-label flex items-center gap-1.5">
           <AlertTriangle size={13} className="text-crimson-700" /> Cảnh báo sớm
         </p>
-        {!nothing && (
-          <span className="text-[11px] text-navy-500 tabular">
-            {officers.length} cán bộ · {tasks.length} nhiệm vụ
-          </span>
-        )}
+        <span className="flex items-center gap-2 shrink-0">
+          {!nothing && (
+            <span className="text-[11px] text-navy-500 tabular">
+              {officers.length} cán bộ · {tasks.length} nhiệm vụ
+            </span>
+          )}
+          {/* Cho người xem biết con số này ở đâu ra, và kiểm chứng được */}
+          <Link
+            to="/kpi/models#nguy_co_nhom_3"
+            className="text-[10px] text-navy-500 hover:text-navy-800 underline decoration-navy-300"
+          >
+            Hai mô hình dự báo
+          </Link>
+        </span>
       </div>
 
       {failed ? (
@@ -109,6 +155,7 @@ export const EarlyWarning = () => {
       ) : (
         <div className="divide-y divide-navy-100">
           {officers.length > 0 && (
+            <KhungMoHinh ma="nguy_co_nhom_3">
             <div className="p-4">
               <p className="text-xs font-medium text-navy-700 flex items-center gap-1.5 mb-2">
                 <TrendingDown size={13} className="text-crimson-600" />
@@ -127,7 +174,7 @@ export const EarlyWarning = () => {
                         {o.tasks_overdue > 0 && ` · ${o.tasks_overdue} quá hạn`}
                         {o.recent_kpi != null && ` · KPI trước ${o.recent_kpi}`}
                       </p>
-                      <p className="text-[10px] text-navy-400 mt-0.5">{o.reasons.join(' · ')}</p>
+                      <ChipCanCu lyDo={o.reasons} />
                     </div>
                     <span className="shrink-0 text-sm font-bold text-crimson-700 tabular">
                       {(o.probability * 100).toFixed(0)}%
@@ -136,9 +183,11 @@ export const EarlyWarning = () => {
                 ))}
               </div>
             </div>
+            </KhungMoHinh>
           )}
 
           {tasks.length > 0 && (
+            <KhungMoHinh ma="nguy_co_tre_han">
             <div className="p-4">
               <p className="text-xs font-medium text-navy-700 flex items-center gap-1.5 mb-2">
                 <Clock size={13} className="text-gold-600" />
@@ -162,6 +211,7 @@ export const EarlyWarning = () => {
                         )}
                         {t.reminder_count > 0 && ` · đã nhắc ${t.reminder_count} lần`}
                       </p>
+                      <ChipCanCu lyDo={t.reasons} />
                     </div>
                     <span className="shrink-0 text-sm font-bold text-gold-700 tabular">
                       {(t.probability * 100).toFixed(0)}%
@@ -170,6 +220,7 @@ export const EarlyWarning = () => {
                 ))}
               </div>
             </div>
+            </KhungMoHinh>
           )}
         </div>
       )}

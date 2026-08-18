@@ -3,11 +3,12 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, LogOut, Bell, Shield, Menu, X,
   Award, FileText, BarChart2, ListChecks, ClipboardCheck, ClipboardList, Network,
-  ShieldAlert, PanelLeftClose, PanelLeftOpen,
+  ShieldAlert, PanelLeftClose, PanelLeftOpen, Cpu, ScanEye,
 } from 'lucide-react';
 import api from '../lib/api';
 import { CLEARANCE_LABELS } from '../lib/task-api';
 import { layMe, xoaCacheMe } from '../lib/me';
+import { dangXemDauVet, datXemDauVet, useDauVetAI } from '../lib/dau-vet-ai';
 import { HopTraCuu } from './HopTraCuu';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -49,6 +50,7 @@ const NHOM_DIEU_HUONG: { tieuDe: string; muc: MucDieuHuong[] }[] = [
       { to: '/kpi/evaluate', nhan: 'Quy trình đánh giá', Icon: FileText },
       { to: '/kpi/criteria', nhan: 'Tiêu chí chung (E)', Icon: ClipboardCheck, quyen: 'leaderPlus' },
       { to: '/kpi/results', nhan: 'Kết quả xếp loại', Icon: Award },
+      { to: '/kpi/models', nhan: 'Mô hình hỗ trợ ra quyết định', Icon: Cpu, quyen: 'leaderPlus' },
     ],
   },
   {
@@ -66,6 +68,7 @@ const Layout = () => {
   const [user, setUser] = useState<any>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [moTrenDienThoai, setMoTrenDienThoai] = useState(false);
+  const xemDauVet = useDauVetAI();
 
   // Ghim = luôn mở. Không ghim = dải biểu tượng, rê chuột mới bung.
   const [ghim, setGhim] = useState(() => localStorage.getItem(KHOA_GHIM) !== 'false');
@@ -86,7 +89,15 @@ const Layout = () => {
   useEffect(() => () => { if (hoanRe.current) window.clearTimeout(hoanRe.current); }, []);
 
   useEffect(() => {
-    layMe().then(setUser).catch(() => {});
+    layMe().then(u => {
+      setUser(u);
+      // Cờ dấu vết AI nằm trong localStorage nên dùng chung cho mọi tài khoản
+      // đăng nhập trên cùng trình duyệt. Cán bộ không giữ chức vụ không mở được
+      // trang Mô hình, để cờ sót lại thì họ thấy nhãn dẫn tới một trang bị chặn.
+      if (!['leader', 'director', 'admin'].includes(u?.role) && dangXemDauVet()) {
+        datXemDauVet(false);
+      }
+    }).catch(() => {});
 
     const fetchUnreadCount = () => {
       api.get('/notifications/unread-count').then(res => setUnreadCount(res.data.count)).catch(() => {});
@@ -282,6 +293,24 @@ const Layout = () => {
             </h2>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {/*
+              Công tắc xem dấu vết AI. Chỉ mở cho lãnh đạo, chỉ huy trở lên vì
+              nhãn dấu vết dẫn sang trang Mô hình — trang đó cũng chặn từ cấp này.
+            */}
+            {isLeaderPlus && (
+              <button
+                onClick={() => datXemDauVet(!dangXemDauVet())}
+                title="Viền và gắn nhãn mọi khối do mô hình sinh ra trên trang đang xem"
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-sm text-[11px] border transition-colors ${
+                  xemDauVet
+                    ? 'bg-teal-700 border-teal-700 text-white hover:bg-teal-800'
+                    : 'border-navy-200 text-navy-600 hover:bg-navy-50'
+                }`}
+              >
+                <ScanEye size={14} className="shrink-0" />
+                <span className="hidden sm:inline">Dấu vết AI</span>
+              </button>
+            )}
             <Link to="/notifications" className="relative p-2 rounded-sm hover:bg-navy-50 transition-colors">
               <Bell size={18} className="text-navy-600" />
               {unreadCount > 0 && (

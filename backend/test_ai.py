@@ -583,3 +583,162 @@ def test_projection_nhiem_vu_khong_lay_truong_bi_che():
             f"{truong!r} là trường bị che theo cấp độ tiếp cận, "
             "không được đưa vào projection của mô hình"
         )
+
+
+# ---------------------------------------------------------------------------
+# Sổ đăng ký mô hình — nguồn duy nhất cho trang "Mô hình hỗ trợ ra quyết định"
+#
+# Trang đó là chỗ người thẩm định đọc để biết hệ thống dùng mô hình gì. Nếu mô tả
+# ở đó trôi khỏi mã nguồn thì tệ hơn là không có trang nào: người đọc tin vào một
+# thứ không còn đúng. Các test dưới đây khoá lại mối nối giữa ba nơi — sổ đăng ký,
+# hằng số của từng mô hình, và nhãn dấu vết AI trong giao diện.
+# ---------------------------------------------------------------------------
+
+def test_so_dang_ky_khai_du_thong_tin_cho_tung_mo_hinh():
+    from backend.services.so_dang_ky_mo_hinh import MO_HINH
+
+    assert len(MO_HINH) >= 6, "Sổ đăng ký thiếu mô hình"
+
+    ma_da_gap = set()
+    for m in MO_HINH:
+        for truong in ("ma", "so", "ten", "muc_dich", "thuat_toan", "vi_sao",
+                       "noi_chay", "ma_nguon", "dung_o"):
+            assert m.get(truong), f"Mô hình {m.get('ma')} thiếu {truong}"
+
+        assert m["ma"] not in ma_da_gap, f"Mã {m['ma']} bị trùng"
+        ma_da_gap.add(m["ma"])
+
+        assert m["noi_chay"] in ("tai_cho", "goi_ra_ngoai")
+        # Lý do chọn thuật toán là phần bắt buộc, không được viết cho có
+        assert len(m["vi_sao"]) > 80, f"Mô hình {m['ma']} chưa nêu rõ lý do chọn thuật toán"
+        for d in m["dung_o"]:
+            assert d.get("nhan") and d.get("duong_dan", "").startswith("/")
+
+
+def test_dung_mot_mo_hinh_duoc_goi_ra_ngoai():
+    """
+    Ranh giới bán được của hệ thống: chỉ trợ lý hội thoại gọi ra ngoài. Nếu có
+    mô hình thứ hai được đánh dấu như vậy thì hoặc là gắn nhãn sai, hoặc ranh
+    giới đã bị phá — cả hai đều phải biết ngay.
+    """
+    from backend.services.so_dang_ky_mo_hinh import MO_HINH
+
+    goi_ra_ngoai = [m["ma"] for m in MO_HINH if m["noi_chay"] == "goi_ra_ngoai"]
+    assert goi_ra_ngoai == ["tro_ly_hoi_thoai"], (
+        f"Chỉ trợ lý hội thoại được gọi ra ngoài, nhưng sổ đăng ký ghi: {goi_ra_ngoai}"
+    )
+
+
+def test_goi_ai_khong_tham_chieu_goi_tro_ly():
+    """
+    `services/ai` cam kết không gọi mạng. Nó mà import `services/tro_ly` — gói có
+    httpx — thì cam kết đó mất nghĩa dù test quét thư viện vẫn xanh. Đó cũng là lý
+    do sổ đăng ký đặt ở `services/`, không đặt trong `services/ai`.
+    """
+    import pathlib
+
+    goi_ai = pathlib.Path(__file__).parent / "services" / "ai"
+    for path in goi_ai.glob("*.py"):
+        source = path.read_text()
+        assert "services.tro_ly" not in source, (
+            f"{path.name} tham chiếu tới services/tro_ly — gói này phải độc lập"
+        )
+
+
+def test_moi_mo_hinh_deu_neu_duoc_tham_so_dang_dung():
+    from backend.services.so_dang_ky_mo_hinh import MO_HINH, _tham_so
+
+    for m in MO_HINH:
+        ts = _tham_so(m["ma"])
+        assert ts, f"Mô hình {m['ma']} không nêu được tham số nào"
+        for d in ts:
+            assert d["nhan"] and d["gia_tri"]
+
+
+def test_tham_so_goi_y_phan_cong_lay_dung_trong_so_dang_chay():
+    """Trọng số in ra trang phải là trọng số mô hình thực sự dùng, không phải số gõ tay."""
+    from backend.services.ai import assignment
+    from backend.services.so_dang_ky_mo_hinh import _tham_so
+
+    ts = _tham_so("goi_y_phan_cong")
+    for k, v in assignment.TRONG_SO.items():
+        assert any(f"{v:.0%}" == d["gia_tri"] for d in ts), (
+            f"Không thấy trọng số {k} = {v:.0%} trên trang"
+        )
+
+
+def test_bao_cao_chat_luong_sap_dac_trung_theo_muc_anh_huong():
+    """
+    Bảng hệ số phải đưa đặc trưng nặng nhất lên đầu và kèm mô tả bằng lời — bảng
+    chỉ có tên biến thì người thẩm định phải mở mã nguồn mới đọc được.
+    """
+    from backend.services.ai import risk
+
+    bao_cao = risk._bao_cao({
+        "usable": True, "auc": 0.83, "n_samples": 120, "n_positive": 30,
+        "confusion": {"tn": 15, "fp": 3, "fn": 2, "tp": 4},
+        "coefficients": {"so_viec_qua_han": 0.4, "xu_the_kpi": -1.2, "tai_viec": 0.9},
+        "trained_at": "2026-08-17T00:00:00",
+    })
+
+    assert [d["ten"] for d in bao_cao["dac_trung"]] == [
+        "xu_the_kpi", "tai_viec", "so_viec_qua_han",
+    ]
+    assert bao_cao["dac_trung"][0]["khi_cao"] == "KPI đang đi lên"
+    assert "model" not in bao_cao and "scaler" not in bao_cao
+
+
+def test_nhan_dau_vet_ai_khop_so_dang_ky():
+    """
+    Nhãn dấu vết AI trong giao diện phải khớp số hiệu và tên của sổ đăng ký.
+    Lệch thì nhãn dẫn người xem sang một thẻ mô hình khác — sai mà không báo lỗi.
+    """
+    import re
+
+    from backend.services.so_dang_ky_mo_hinh import MO_HINH
+
+    src = _thu_muc_frontend()
+    if not src.exists():
+        pytest.skip("Không có mã nguồn giao diện")
+
+    noi_dung = (src / "lib" / "dau-vet-ai.ts").read_text()
+    khoi = re.search(r"MO_HINH_DA_GAN[^=]*=\s*\{(.*?)\n\};", noi_dung, re.S)
+    assert khoi, "Không tìm thấy MO_HINH_DA_GAN trong lib/dau-vet-ai.ts"
+
+    trong_giao_dien = {
+        ma: (int(so), ten)
+        for ma, so, ten in re.findall(
+            r"(\w+):\s*\{\s*so:\s*(\d+),\s*ten:\s*'([^']*)'", khoi.group(1)
+        )
+    }
+    trong_so_dang_ky = {m["ma"]: (m["so"], m["ten"]) for m in MO_HINH}
+
+    assert trong_giao_dien == trong_so_dang_ky, (
+        "Nhãn dấu vết AI lệch khỏi sổ đăng ký mô hình:\n"
+        f"  giao diện:  {trong_giao_dien}\n"
+        f"  sổ đăng ký: {trong_so_dang_ky}"
+    )
+
+
+def test_nhan_thanh_phan_khop_khoa_trong_so_cua_mo_hinh_phan_cong():
+    """
+    Thanh 5 thành phần trong hộp nhiệm vụ vẽ theo khoá của TRONG_SO. Đổi tên một
+    khoá ở backend mà quên giao diện thì thanh lặng lẽ mất một cột.
+    """
+    import re
+
+    from backend.services.ai.assignment import TRONG_SO
+
+    src = _thu_muc_frontend()
+    if not src.exists():
+        pytest.skip("Không có mã nguồn giao diện")
+
+    noi_dung = (src / "lib" / "ai-api.ts").read_text()
+    khoi = re.search(r"NHAN_THANH_PHAN[^=]*=\s*\{(.*?)\n\};", noi_dung, re.S)
+    assert khoi, "Không tìm thấy NHAN_THANH_PHAN trong lib/ai-api.ts"
+
+    khoa_giao_dien = set(re.findall(r"^\s*(\w+):", khoi.group(1), re.M))
+    assert khoa_giao_dien == set(TRONG_SO), (
+        f"Nhãn thành phần lệch: giao diện {sorted(khoa_giao_dien)} "
+        f"vs backend {sorted(TRONG_SO)}"
+    )

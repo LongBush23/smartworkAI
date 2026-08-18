@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  MessageCircleQuestion, X, Send, FileText, ChevronDown, ChevronRight, Bot, Database,
+  MessageCircleQuestion, X, Send, FileText, ChevronDown, ChevronRight, Bot, Database, Globe,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { aiApi } from '../lib/ai-api';
 import type { GuidelineClause } from '../lib/ai-api';
 import { troLyApi, NHAN_CONG_CU } from '../lib/tro-ly-api';
 import type { TraLoiTroLy, LuotTruoc } from '../lib/tro-ly-api';
+import { useDauVetAI } from '../lib/dau-vet-ai';
 
 /**
  * Trợ lý hỏi đáp, mở được ở mọi trang.
@@ -39,6 +41,10 @@ export const HopTraCuu = () => {
   const [dieuKhoan, setDieuKhoan] = useState<GuidelineClause[] | null>(null);
   const [moDanhMuc, setMoDanhMuc] = useState(false);
   const [dangXem, setDangXem] = useState<string | null>(null);
+
+  // Hộp này neo cố định vào góc màn hình, nên không bọc được bằng KhungMoHinh:
+  // thẻ bọc sẽ nằm ở vị trí tĩnh và vẽ một khung rỗng lơ lửng. Tự kẻ viền tại đây.
+  const dauVet = useDauVetAI();
 
   const cuoiRef = useRef<HTMLDivElement>(null);
   const oNhapRef = useRef<HTMLInputElement>(null);
@@ -99,11 +105,23 @@ export const HopTraCuu = () => {
 
   return (
     <div
-      className="fixed z-40 bg-white border border-navy-300 shadow-2xl shadow-navy-900/25
+      className={`fixed z-40 bg-white border border-navy-300 shadow-2xl shadow-navy-900/25
                  flex flex-col rounded-sm
                  inset-x-3 bottom-3 top-16
-                 sm:inset-x-auto sm:top-auto sm:right-5 sm:bottom-5 sm:w-[420px] sm:h-[600px]"
+                 sm:inset-x-auto sm:top-auto sm:right-5 sm:bottom-5 sm:w-[420px] sm:h-[600px]
+                 ${dauVet ? 'outline outline-2 outline-teal-600 outline-offset-2' : ''}`}
     >
+      {dauVet && (
+        <Link
+          to="/kpi/models#tro_ly_hoi_thoai"
+          className="absolute -top-2.5 left-2 z-20 flex items-center gap-1 px-1.5 py-px
+                     bg-teal-700 text-white text-[10px] font-medium rounded-sm hover:bg-teal-800"
+        >
+          <Globe size={10} className="shrink-0" />
+          Mô hình 6 · Trợ lý hội thoại · gọi ra ngoài
+        </Link>
+      )}
+
       <div className="h-12 shrink-0 bg-navy-700 text-white flex items-center px-3 gap-2">
         <Bot size={17} className="shrink-0" />
         <div className="min-w-0 flex-1">
