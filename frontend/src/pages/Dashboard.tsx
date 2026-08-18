@@ -7,6 +7,7 @@ import type { KPIEvaluation } from '../lib/kpi-api';
 import { taskApi, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '../lib/task-api';
 import type { Task } from '../lib/task-api';
 import { EarlyWarning } from '../components/EarlyWarning';
+import { DaiHoTroAI } from '../components/DaiHoTroAI';
 import TaskTitle from '../components/TaskTitle';
 import { layMe } from '../lib/me';
 
@@ -164,6 +165,9 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Mô hình luôn hiện diện; cảnh báo cụ thể thì chỉ hiện khi có việc */}
+      <DaiHoTroAI />
 
       {['leader', 'director', 'admin'].includes(me?.role) && <EarlyWarning />}
 

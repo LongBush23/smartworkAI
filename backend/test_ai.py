@@ -742,3 +742,74 @@ def test_nhan_thanh_phan_khop_khoa_trong_so_cua_mo_hinh_phan_cong():
         f"Nhãn thành phần lệch: giao diện {sorted(khoa_giao_dien)} "
         f"vs backend {sorted(TRONG_SO)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Dải "AI đang hỗ trợ đồng chí" trên Trang chủ
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_dai_ho_tro_khong_dua_the_ngoai_quyen_cho_can_bo(monkeypatch):
+    """
+    Dải này gọi được bởi mọi cán bộ đã đăng nhập, nên chính nó phải tự giới hạn:
+    dấu hiệu rà soát là số liệu của cấp lãnh đạo đơn vị, lộ ra cho cán bộ thường
+    là rò rỉ dữ liệu ngay trên Trang chủ.
+    """
+    from backend.services import so_dang_ky_mo_hinh
+
+    tt = await so_dang_ky_mo_hinh.tom_tat_ho_tro({"role": "staff", "department_id": "d1"})
+    ma = [t["ma"] for t in tt["the"]]
+
+    assert "ra_soat" not in ma
+    assert ma == ["mo_hinh", "dieu_khoan", "tro_ly"]
+    # Trang Mô hình chặn từ cấp lãnh đạo — không dẫn cán bộ tới chỗ bị từ chối
+    assert all(t["duong_dan"] is None for t in tt["the"])
+
+
+@pytest.mark.asyncio
+async def test_dai_ho_tro_dem_dau_hieu_ra_soat_cho_truong_phong(monkeypatch):
+    from backend.services import so_dang_ky_mo_hinh
+    from backend.services.ai import anomaly
+
+    evals = [
+        make_eval(f"u{i}", f"Cán bộ {i}", "d1", datetime.utcnow().month,
+                  70 + i * 5, "group_1", total_e=30.0)
+        for i in range(6)
+    ]
+    monkeypatch.setattr(anomaly, "db", FakeDB(
+        kpi_evaluations=evals,
+        departments=[{"_id": "d1", "name": "Phòng Thử nghiệm"}],
+    ))
+
+    tt = await so_dang_ky_mo_hinh.tom_tat_ho_tro({"role": "director", "department_id": "d1"})
+    the = {t["ma"]: t for t in tt["the"]}
+
+    assert "ra_soat" in the
+    assert the["ra_soat"]["duong_dan"] == "/quality-review"
+    assert int(the["ra_soat"]["so"]) >= 1
+    assert the["mo_hinh"]["duong_dan"] == "/kpi/models"
+
+
+def test_moi_duong_dan_tren_dai_ho_tro_deu_co_trang_that():
+    """
+    Thẻ dẫn tới một đường dẫn không có route thì bấm vào ra trang trắng, mà không
+    có gì báo lỗi. Đối chiếu thẳng với bảng route trong App.tsx.
+    """
+    import re
+
+    from backend.services.so_dang_ky_mo_hinh import MO_HINH
+
+    src = _thu_muc_frontend()
+    if not src.exists():
+        pytest.skip("Không có mã nguồn giao diện")
+
+    app = (src / "App.tsx").read_text()
+    duong_dan_con = set(re.findall(r'<Route\s+path="([^"]+)"', app))
+    # Route con của /kpi nằm trong <Route path="kpi">, ghép lại cho đủ
+    co_san = {"/"} | {f"/{p}" for p in duong_dan_con} | {f"/kpi/{p}" for p in duong_dan_con}
+
+    can_kiem = {d["duong_dan"] for m in MO_HINH for d in m["dung_o"]}
+    can_kiem |= {"/kpi/models", "/quality-review"}
+
+    thieu = sorted(d for d in can_kiem if d not in co_san)
+    assert not thieu, f"Đường dẫn không có route tương ứng trong App.tsx: {thieu}"

@@ -197,6 +197,15 @@ export interface SoDangKyMoHinh {
   ghi_chu_du_lieu_mau: string;
 }
 
+export interface TheHoTroAI {
+  ma: string;
+  nhan: string;
+  /** Chuỗi chứ không phải số: có thẻ nêu trạng thái ("Sẵn sàng") chứ không đếm. */
+  so: string;
+  phu: string;
+  duong_dan: string | null;
+}
+
 export const aiApi = {
   suggestAssignee: async (params: {
     classification?: string;
@@ -243,6 +252,11 @@ export const aiApi = {
   moHinh: async () => {
     const res = await api.get<SoDangKyMoHinh>('/ai/models');
     return res.data;
+  },
+
+  tomTat: async () => {
+    const res = await api.get<{ the: TheHoTroAI[] }>('/ai/tom-tat');
+    return res.data.the;
   },
 
   retrain: async () => {

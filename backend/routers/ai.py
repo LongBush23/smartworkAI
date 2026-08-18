@@ -33,6 +33,17 @@ async def models(current_user: dict = Depends(require_leader_or_above)):
     return await so_dang_ky_mo_hinh.danh_sach()
 
 
+@router.get("/tom-tat")
+async def tom_tat(current_user: dict = Depends(get_current_user)):
+    """
+    Dải "AI đang hỗ trợ đồng chí" trên Trang chủ.
+
+    Mọi cán bộ đã đăng nhập đều gọi được; số thẻ trả về thay đổi theo chức vụ,
+    đúng bằng phạm vi của các endpoint sinh ra từng con số.
+    """
+    return await so_dang_ky_mo_hinh.tom_tat_ho_tro(current_user)
+
+
 def _scope_department(current_user: dict, department_id: Optional[str]) -> Optional[str]:
     """
     Giới hạn phạm vi xem theo chức vụ, giống quy tắc ở trang Nhiệm vụ:

@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, LogOut, Bell, Shield, Menu, X,
   Award, FileText, BarChart2, ListChecks, ClipboardCheck, ClipboardList, Network,
-  ShieldAlert, PanelLeftClose, PanelLeftOpen, Cpu, ScanEye,
+  ShieldAlert, PanelLeftClose, PanelLeftOpen, Cpu, ScanEye, Bot,
 } from 'lucide-react';
 import api from '../lib/api';
 import { CLEARANCE_LABELS } from '../lib/task-api';
@@ -69,6 +69,12 @@ const Layout = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [moTrenDienThoai, setMoTrenDienThoai] = useState(false);
   const xemDauVet = useDauVetAI();
+
+  // Trợ lý: trạng thái mở nằm ở đây vì ô hỏi trên thanh tiêu đề và hộp chat là
+  // hai nhánh khác nhau của cây React.
+  const [moTroLy, setMoTroLy] = useState(false);
+  const [cauHoiGui, setCauHoiGui] = useState('');
+  const [oHoi, setOHoi] = useState('');
 
   // Ghim = luôn mở. Không ghim = dải biểu tượng, rê chuột mới bung.
   const [ghim, setGhim] = useState(() => localStorage.getItem(KHOA_GHIM) !== 'false');
@@ -292,7 +298,53 @@ const Layout = () => {
               Tính điểm KPI trong đánh giá, xếp loại chất lượng tập thể, cá nhân
             </h2>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/*
+              Lối vào trợ lý. Trước đây là nút tròn không nhãn ở góc dưới phải —
+              không ai biết bấm vào thì được gì. Nay là một ô có chữ mời gõ, đúng
+              chỗ mắt nhìn khi cần tra cứu. Màn hình hẹp thì thu về một biểu tượng.
+            */}
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                if (!oHoi.trim()) { setMoTroLy(true); return; }
+                setCauHoiGui(oHoi.trim());
+                setOHoi('');
+                setMoTroLy(true);
+              }}
+              className="hidden md:flex items-center gap-1.5 h-8 pl-2.5 pr-1 rounded-sm
+                         border border-navy-200 bg-navy-50/60 focus-within:bg-white
+                         focus-within:border-navy-400 transition-colors"
+            >
+              {/*
+                Bấm biểu tượng thì mở hộp ngay; còn gõ vào ô thì phải Enter mới
+                mở. KHÔNG mở theo sự kiện focus: hộp vừa mở là nó kéo con trỏ
+                sang ô nhập của chính nó, người đang gõ dở ở đây mất luôn chữ.
+              */}
+              <button
+                type="button"
+                onClick={() => setMoTroLy(true)}
+                title="Mở hộp trợ lý"
+                className="text-navy-500 hover:text-navy-800 shrink-0"
+              >
+                <Bot size={14} />
+              </button>
+              <input
+                value={oHoi}
+                onChange={e => setOHoi(e.target.value)}
+                placeholder="Hỏi trợ lý…"
+                className="w-36 lg:w-56 bg-transparent text-[12px] text-navy-700
+                           placeholder:text-navy-400 outline-none"
+              />
+            </form>
+            <button
+              onClick={() => setMoTroLy(true)}
+              title="Hỏi trợ lý"
+              className="md:hidden p-1.5 rounded-sm text-navy-600 hover:bg-navy-50"
+            >
+              <Bot size={18} />
+            </button>
+
             {/*
               Công tắc xem dấu vết AI. Chỉ mở cho lãnh đạo, chỉ huy trở lên vì
               nhãn dấu vết dẫn sang trang Mô hình — trang đó cũng chặn từ cấp này.
@@ -327,8 +379,13 @@ const Layout = () => {
         </main>
       </div>
 
-      {/* Tra cứu Hướng dẫn — mở được ở mọi trang, xử lý tại chỗ */}
-      <HopTraCuu />
+      {/* Trợ lý — mở được ở mọi trang, lối vào nằm trên thanh tiêu đề */}
+      <HopTraCuu
+        mo={moTroLy}
+        onDoiMo={setMoTroLy}
+        cauHoiDau={cauHoiGui}
+        onDaNhanCauHoi={() => setCauHoiGui('')}
+      />
     </div>
   );
 };

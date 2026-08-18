@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
-  MessageCircleQuestion, X, Send, FileText, ChevronDown, ChevronRight, Bot, Database, Globe,
+  X, Send, FileText, ChevronDown, ChevronRight, Bot, Database, Globe,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { aiApi } from '../lib/ai-api';
@@ -19,12 +19,53 @@ import { useDauVetAI } from '../lib/dau-vet-ai';
  * nói rõ đang ở chế độ nào chứ không giấu.
  */
 
-const GOI_Y = [
+/**
+ * Câu hỏi gợi ý, đổi theo trang đang mở.
+ *
+ * Trước đây bốn câu cố định cho mọi trang. Người đang xem trang Rà soát chất
+ * lượng mà được gợi ý "KPI của tôi năm nay thế nào?" thì hiểu ngay là trợ lý
+ * không biết mình đang ở đâu, và bỏ qua. Gợi ý bám việc đang làm mới khiến người
+ * ta bấm thử lần đầu.
+ */
+const GOI_Y_MAC_DINH = [
   'Tôi còn mấy việc quá hạn?',
   'KPI của tôi năm nay thế nào?',
   'Sửa 3 lần thì tính bao nhiêu phần trăm?',
   'Quy trình đánh giá gồm mấy bước?',
 ];
+
+const GOI_Y_THEO_TRANG: { tien_to: string; cau: string[] }[] = [
+  { tien_to: '/tasks', cau: [
+    'Tôi còn mấy việc quá hạn?',
+    'Nhiệm vụ nào của tôi sắp đến hạn?',
+    'Bị nhắc 2 lần thì điểm tiến độ còn bao nhiêu phần trăm?',
+  ] },
+  { tien_to: '/quality-review', cau: [
+    'Cán bộ nào trong đơn vị cần lưu ý?',
+    'Đơn vị tôi kỳ này ra sao?',
+    'Điểm tiêu chí chung tính thế nào?',
+  ] },
+  { tien_to: '/kpi/criteria', cau: [
+    'Điểm tiêu chí chung E gồm những gì?',
+    'Tối đa được bao nhiêu điểm E?',
+  ] },
+  { tien_to: '/kpi/results', cau: [
+    'KPI của tôi năm nay thế nào?',
+    'Bao nhiêu điểm thì thuộc Nhóm 1?',
+  ] },
+  { tien_to: '/kpi', cau: [
+    'Quy trình đánh giá gồm mấy bước?',
+    'Sửa 3 lần thì tính bao nhiêu phần trăm?',
+    'KPI của tôi năm nay thế nào?',
+  ] },
+  { tien_to: '/employees', cau: [
+    'Cán bộ nào trong đơn vị cần lưu ý?',
+    'Đơn vị tôi kỳ này ra sao?',
+  ] },
+];
+
+const goiYCho = (duongDan: string) =>
+  GOI_Y_THEO_TRANG.find(g => duongDan.startsWith(g.tien_to))?.cau ?? GOI_Y_MAC_DINH;
 
 interface Luot {
   hoi: string;
@@ -32,8 +73,21 @@ interface Luot {
   loi?: boolean;
 }
 
-export const HopTraCuu = () => {
-  const [mo, setMo] = useState(false);
+interface Props {
+  mo: boolean;
+  onDoiMo: (mo: boolean) => void;
+  /** Câu hỏi gõ sẵn ở thanh tiêu đề — mở hộp là gửi luôn, khỏi gõ lại. */
+  cauHoiDau?: string;
+  onDaNhanCauHoi?: () => void;
+}
+
+/*
+ * Trạng thái mở/đóng do Layout giữ, không phải hộp này tự giữ. Lý do: ô "Hỏi trợ
+ * lý…" nằm trên thanh tiêu đề — nút bấm và hộp chat là hai nhánh khác nhau của
+ * cây React, nên phải có một chỗ chung ở trên cả hai mới điều khiển được.
+ */
+export const HopTraCuu = ({ mo, onDoiMo, cauHoiDau, onDaNhanCauHoi }: Props) => {
+  const { pathname } = useLocation();
   const [q, setQ] = useState('');
   const [lich, setLich] = useState<Luot[]>([]);
   const [dangHoi, setDangHoi] = useState(false);
@@ -54,7 +108,7 @@ export const HopTraCuu = () => {
     cuoiRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [lich, dangHoi]);
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMo(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onDoiMo(false); };
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
   }, []);
@@ -82,6 +136,14 @@ export const HopTraCuu = () => {
     }
   };
 
+  // Câu gõ ở thanh tiêu đề: gửi ngay khi hộp mở rồi báo Layout xoá đi, để lần mở
+  // sau không gửi lại câu cũ.
+  useEffect(() => {
+    if (!mo || !cauHoiDau) return;
+    hoi(cauHoiDau);
+    onDaNhanCauHoi?.();
+  }, [mo, cauHoiDau]);
+
   const xemDanhMuc = async () => {
     if (moDanhMuc) { setMoDanhMuc(false); return; }
     setMoDanhMuc(true);
@@ -89,19 +151,10 @@ export const HopTraCuu = () => {
     try { setDieuKhoan(await aiApi.allClauses()); } catch { setDieuKhoan([]); }
   };
 
-  if (!mo) {
-    return (
-      <button
-        onClick={() => setMo(true)}
-        title="Hỏi trợ lý"
-        className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full bg-navy-700 text-white
-                   shadow-lg shadow-navy-900/30 flex items-center justify-center
-                   hover:bg-navy-800 transition-colors"
-      >
-        <MessageCircleQuestion size={22} />
-      </button>
-    );
-  }
+  // Lối vào trợ lý nay là ô "Hỏi trợ lý…" trên thanh tiêu đề. Nút bong bóng tròn
+  // ở góc phải đã bỏ: nó không có nhãn, không nói được nó làm gì, nên phần lớn
+  // người dùng chưa từng bấm vào — mô hình ngôn ngữ coi như không tồn tại với họ.
+  if (!mo) return null;
 
   return (
     <div
@@ -130,7 +183,7 @@ export const HopTraCuu = () => {
             Hỏi về nhiệm vụ, điểm KPI và Hướng dẫn 20-HD/ĐUCA
           </p>
         </div>
-        <button onClick={() => setMo(false)} className="text-navy-200 hover:text-white shrink-0">
+        <button onClick={() => onDoiMo(false)} className="text-navy-200 hover:text-white shrink-0">
           <X size={18} />
         </button>
       </div>
@@ -143,7 +196,7 @@ export const HopTraCuu = () => {
               Trợ lý chỉ đọc được dữ liệu trong phạm vi đồng chí có quyền xem.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {GOI_Y.map(s => (
+              {goiYCho(pathname).map(s => (
                 <button key={s} onClick={() => hoi(s)}
                   className="px-2 py-1 text-[11px] border border-navy-200 rounded-sm text-navy-600 hover:bg-navy-50 text-left">
                   {s}

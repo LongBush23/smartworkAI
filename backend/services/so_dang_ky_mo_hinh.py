@@ -18,6 +18,7 @@ tham chiếu tới gói có gọi mạng, và test quét mã của gói đó m�
 
 Sổ chỉ ĐỌC. Không huấn luyện lại, không ghi vào cơ sở dữ liệu.
 """
+from datetime import datetime
 from typing import Any, Dict, List
 
 from backend.config import GEMINI_MODEL
@@ -301,3 +302,74 @@ async def danh_sach() -> Dict[str, Any]:
         "ranh_gioi": RANH_GIOI,
         "ghi_chu_du_lieu_mau": GHI_CHU_DU_LIEU_MAU,
     }
+
+
+async def tom_tat_ho_tro(nguoi_dung: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Dải "AI đang hỗ trợ đồng chí" trên Trang chủ.
+
+    VÌ SAO KHÔNG ĐẾM LUÔN SỐ CẢNH BÁO NGUY CƠ Ở ĐÂY
+    -----------------------------------------------
+    Khối Cảnh báo sớm nằm ngay dưới dải này đã in "N cán bộ · N nhiệm vụ" ở
+    tiêu đề của nó. Lặp lại đúng hai con số đó cách nhau 200px vừa thừa, vừa
+    phải chạy lại hai mô hình dự báo mỗi lần mở Trang chủ — tốn gấp đôi mà
+    không thêm thông tin nào. Dải này chỉ nêu những thứ Trang chủ CHƯA nói.
+
+    Số thẻ thay đổi theo chức vụ: dấu hiệu rà soát chỉ dành cho lãnh đạo đơn vị
+    trở lên, đúng bằng phạm vi của endpoint sinh ra nó.
+    """
+    vai_tro = nguoi_dung.get("role", "staff")
+    tu_lanh_dao = vai_tro in ("leader", "director", "admin")
+    tu_truong_phong = vai_tro in ("director", "admin")
+
+    tai_cho = sum(1 for m in MO_HINH if m["noi_chay"] == "tai_cho")
+    the: List[Dict[str, Any]] = [{
+        "ma": "mo_hinh",
+        "nhan": "Mô hình đang chạy",
+        "so": str(len(MO_HINH)),
+        "phu": f"{tai_cho} chạy tại chỗ · {len(MO_HINH) - tai_cho} gọi ra ngoài",
+        # Cán bộ không giữ chức vụ vẫn thấy con số — biết hệ thống dùng mô hình
+        # gì với dữ liệu của mình là chuyện minh bạch — nhưng trang chi tiết thì
+        # chặn từ cấp lãnh đạo, nên không gắn đường dẫn dẫn tới chỗ bị từ chối.
+        "duong_dan": "/kpi/models" if tu_lanh_dao else None,
+    }]
+
+    if tu_truong_phong:
+        now = datetime.utcnow()
+        phong = None if vai_tro == "admin" else nguoi_dung.get("department_id")
+        kq = await anomaly.detect(
+            period_month=now.month, period_year=now.year, department_id=phong,
+        )
+        tt = kq["summary"]
+        the.append({
+            "ma": "ra_soat",
+            "nhan": f"Dấu hiệu cần rà soát kỳ {now.month}/{now.year}",
+            "so": str(len(kq["flags"])),
+            "phu": (
+                f"{tt['cao']} cần rà soát ngay · đã soát {kq['total_evaluations']} kỳ đánh giá"
+            ),
+            "duong_dan": "/quality-review",
+        })
+
+    the.append({
+        "ma": "dieu_khoan",
+        "nhan": "Điều khoản tra cứu được",
+        "so": str(len(guideline.CLAUSES)),
+        "phu": "Hướng dẫn số 20-HD/ĐUCA — hỏi trợ lý là ra nguyên văn",
+        "duong_dan": None,
+    })
+
+    san_sang = gemini.san_sang()
+    the.append({
+        "ma": "tro_ly",
+        "nhan": "Trợ lý hội thoại",
+        "so": "Sẵn sàng" if san_sang else "Chế độ tại chỗ",
+        "phu": (
+            f"{len(BANG_CONG_CU)} công cụ chỉ đọc, phạm vi đúng bằng quyền của đồng chí"
+            if san_sang
+            else "Chưa cấu hình khoá — vẫn trả lời được bằng máy tra cứu tại chỗ"
+        ),
+        "duong_dan": None,
+    })
+
+    return {"the": the}
