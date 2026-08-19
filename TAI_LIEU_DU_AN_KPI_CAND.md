@@ -9,7 +9,7 @@
 > **Căn cứ nghiệp vụ**: Hướng dẫn số 20-HD/ĐUCA ngày 08/6/2026 của Ban Thường vụ Đảng ủy
 > Công an Trung ương về phương pháp tính điểm và sử dụng chỉ số đo lường (KPI) trong đánh giá,
 > xếp loại chất lượng đối với tập thể, cá nhân trong Công an nhân dân.
-> **Phiên bản**: 3.0.0
+> **Phiên bản**: 3.1.0
 > **Bản triển khai thử nghiệm**: https://smartwork-ai-3u7e.vercel.app
 
 ---
@@ -24,7 +24,7 @@
 6. [Mô hình dữ liệu](#6-mô-hình-dữ-liệu)
 7. [Phương pháp tính điểm KPI](#7-phương-pháp-tính-điểm-kpi)
 8. [Quy trình đánh giá 03 bước](#8-quy-trình-đánh-giá-03-bước)
-9. [Bốn mô hình hỗ trợ ra quyết định](#9-bốn-mô-hình-hỗ-trợ-ra-quyết-định)
+9. [Các mô hình hỗ trợ ra quyết định](#9-các-mô-hình-hỗ-trợ-ra-quyết-định)
 10. [Nhiệm vụ có độ mật](#10-nhiệm-vụ-có-độ-mật)
 11. [Bảo mật và phân quyền](#11-bảo-mật-và-phân-quyền)
 12. [API Endpoints](#12-api-endpoints)
@@ -53,8 +53,9 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
   không vượt cấp.
 - **Giữ được dữ liệu gốc** — mỗi lần nhắc nhở tiến độ, mỗi lần yêu cầu hoàn thiện, chỉnh sửa đều được
   ghi nhận ngay tại thời điểm phát sinh, để điểm B và điểm C suy ra từ số liệu có thật.
-- **Hỗ trợ ra quyết định sớm** — bốn mô hình chạy tại chỗ giúp lãnh đạo can thiệp ngay giữa kỳ,
-  nhưng không mô hình nào được quyết định điểm KPI.
+- **Hỗ trợ ra quyết định sớm** — năm mô hình chạy tại chỗ giúp lãnh đạo can thiệp ngay giữa kỳ, thêm một
+  trợ lý hội thoại để hỏi bằng lời thường; không mô hình nào được quyết định điểm KPI, và hệ thống **đo bằng
+  số** việc lãnh đạo có làm theo gợi ý hay không.
 
 ### 1.3 Đối tượng sử dụng
 
@@ -106,7 +107,16 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
 - **Một nguồn công thức duy nhất.** Toàn bộ công thức nằm ở `services/kpi_service.py`, dùng chung cho
   router, seeder, mô-đun tra cứu văn bản và bộ kiểm thử — không nơi nào chép lại công thức.
 - **Hai ranh giới cứng cho các mô hình** (xem mục 9): không mô hình nào ghi vào kết quả điểm KPI;
-  không một byte dữ liệu nào rời hệ thống. Cả hai đều được khoá bằng kiểm thử tự động.
+  năm mô hình ra quyết định chạy hoàn toàn tại chỗ, không một byte dữ liệu nào rời hệ thống. Chỉ trợ lý
+  hội thoại gọi ra ngoài, và nó không tính điểm, không xếp hạng ai. Cả hai ranh giới đều được khoá bằng
+  kiểm thử tự động.
+- **Mô hình mở ra cho người dùng xem, không giấu trong nghiệp vụ.** Trang **Mô hình hỗ trợ ra quyết định**
+  công khai mục đích, thuật toán, *lý do chọn thuật toán*, tham số và chất lượng đo được của từng mô hình —
+  gồm AUC so ngưỡng, ma trận nhầm lẫn và bảng hệ số từng đặc trưng. Chế độ **Xem dấu vết AI** viền và gắn
+  số hiệu mọi khối do mô hình sinh ra trên trang đang xem (mục 9.8).
+- **Đo bằng số việc "người quyết định vẫn là người".** Hệ thống ghi lại mỗi lượt giao nhiệm vụ có mở gợi ý
+  phân công và đếm số lượt lãnh đạo chọn người *ngoài* danh sách mô hình đưa ra — biến một câu cam kết
+  thành chỉ số kiểm chứng được (mục 9.7).
 - **Kiểm chứng bằng ví dụ của chính văn bản.** Ví dụ chấm điểm tại Phụ lục được cài thành test:
   KPI = 97,97 và tổng điểm xếp loại = 98,579.
 - **Xử lý được nhiệm vụ có độ mật** mà không lưu nội dung mật trên hệ thống (xem mục 10).
@@ -120,7 +130,8 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
 │                  FRONTEND (React 19 + TypeScript)                │
 │  Trang chủ · Cơ cấu tổ chức · Nhiệm vụ · Danh mục · Tổng quan KPI │
 │  Quy trình đánh giá · Tiêu chí chung (E) · Kết quả xếp loại       │
-│  Cán bộ · Rà soát chất lượng · Nhật ký · Hồ sơ cá nhân            │
+│  Mô hình hỗ trợ ra quyết định · Cán bộ · Rà soát chất lượng       │
+│  Nhật ký · Hồ sơ cá nhân  ·  Hộp trợ lý mở được ở mọi trang       │
 │         Axios — tự gắn và làm mới thẻ JWT khi hết hạn            │
 └───────────────────────────┬──────────────────────────────────────┘
                             │  HTTPS · REST API (JSON)
@@ -130,7 +141,7 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
 │  ┌────────────────────────────────────────────────────────────┐  │
 │  │ ROUTERS                                                    │  │
 │  │ auth · departments · employees · tasks · comments           │  │
-│  │ notifications · kpi · ai            (+ audit-logs, health)  │  │
+│  │ notifications · kpi · ai · tro-ly   (+ audit-logs, health)  │  │
 │  └──────────────────────────┬─────────────────────────────────┘  │
 │                             │                                    │
 │  ┌──────────────────────────▼─────────────────────────────────┐  │
@@ -138,12 +149,18 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
 │  │ kpi_service   công thức A, B, C, D · KPI · xếp nhóm        │  │
 │  │ seeder / kpi_seeder   sinh dữ liệu mẫu phủ đủ trường hợp   │  │
 │  │ notification_service · audit_service                       │  │
+│  │ so_dang_ky_mo_hinh   sổ đăng ký mô hình (nguồn duy nhất)   │  │
+│  │ nhat_ky_goi_y   ghi lãnh đạo có làm theo gợi ý hay không   │  │
 │  ├────────────────────────────────────────────────────────────┤  │
 │  │ SERVICES/AI — HỖ TRỢ RA QUYẾT ĐỊNH (chạy tại chỗ)          │  │
 │  │ assignment  gợi ý phân công    (công thức có trọng số)     │  │
 │  │ risk        cảnh báo sớm        (hồi quy logistic × 2)     │  │
 │  │ anomaly     chấm hình thức      (thống kê, 5 dấu hiệu)     │  │
 │  │ guideline   tra cứu văn bản     (máy quy tắc + tìm kiếm)   │  │
+│  ├────────────────────────────────────────────────────────────┤  │
+│  │ SERVICES/TRO_LY — TRỢ LÝ HỘI THOẠI (lối ra ngoài duy nhất) │  │
+│  │ gemini    vòng gọi công cụ, tự lui về máy tra cứu tại chỗ  │  │
+│  │ cong_cu   05 công cụ CHỈ ĐỌC, phạm vi = quyền người hỏi    │  │
 │  └──────────────────────────┬─────────────────────────────────┘  │
 │                             │                                    │
 │  ┌──────────────────────────▼─────────────────────────────────┐  │
@@ -158,6 +175,7 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
 │                           MongoDB                                │
 │  users · departments · tasks · comments · notifications          │
 │  audit_logs · kpi_task_catalog · kpi_evaluations                 │
+│  ai_suggestion_logs  (nhật ký gợi ý phân công)                   │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -168,7 +186,10 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
 - **Stateless + JWT** — máy chủ không giữ phiên; thẻ truy cập ngắn hạn, thẻ làm mới lưu phía máy chủ
   để thu hồi được khi đăng xuất.
 - **Nghiệp vụ tập trung** — mọi công thức ở một nơi duy nhất.
-- **Mô hình tách riêng** — nhóm `services/ai` chỉ đọc dữ liệu, không ghi vào kết quả đánh giá.
+- **Mô hình tách riêng** — nhóm `services/ai` chỉ đọc dữ liệu, không ghi vào cơ sở dữ liệu và không gọi
+  mạng; cả hai điều này được khoá bằng test quét mã nguồn.
+- **Một lối ra ngoài duy nhất** — chỉ `services/tro_ly` gọi dịch vụ bên ngoài. Tách thành gói riêng để ranh
+  giới nhìn thấy được ngay trong cấu trúc thư mục, không chỉ nằm trong lời cam kết.
 - **Phân quyền ở tầng máy chủ** — kiểm soát bằng dependency của FastAPI trên từng endpoint, và giới hạn
   phạm vi ngay trong điều kiện truy vấn cơ sở dữ liệu.
 
@@ -190,6 +211,7 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
 | **passlib + bcrypt** | 1.7.4 / 3.2.2 | Băm mật khẩu |
 | **scikit-learn** | 1.5.0 | Hồi quy logistic, chuẩn hoá, đánh giá mô hình |
 | **NumPy / SciPy** | 1.26.4 / 1.17.1 | Tính toán số |
+| **httpx** | 0.28.1 | Gọi API mô hình ngôn ngữ — **chỉ dùng trong `services/tro_ly`** |
 | **python-dotenv** | 1.2.2 | Nạp cấu hình từ tệp `.env` |
 | **pytest** | 8.3.4 | Kiểm thử |
 
@@ -215,6 +237,7 @@ Số hoá trọn vẹn phương pháp tính điểm KPI quy định tại Hướ
 | Cảnh báo sớm (2 mô hình) | Hồi quy logistic có chuẩn hoá, cân bằng trọng số lớp | Đóng góp từng đặc trưng = hệ số × giá trị → diễn giải thành lời được |
 | Phát hiện chấm hình thức | Thống kê mô tả với ngưỡng công khai | Mỗi dấu hiệu phải là quy tắc rõ ràng để người đọc tự thẩm định |
 | Tra cứu Hướng dẫn | Máy quy tắc + so khớp từ khoá tiếng Việt bỏ dấu | Cần nguyên văn điều khoản, không cần diễn giải có thể sai lệch |
+| Trợ lý hội thoại | Mô hình ngôn ngữ (Gemini) + vòng gọi 05 công cụ chỉ đọc | Chỉ để hiểu câu hỏi và diễn đạt lại; mọi con số vẫn do máy tra cứu tại chỗ cấp |
 
 ---
 
@@ -230,7 +253,8 @@ smartwork-ai/
 │   ├── security.py                  # Băm mật khẩu, JWT, lấy người dùng hiện tại
 │   ├── dependencies.py              # Phân quyền: admin > director > leader > staff
 │   ├── test_kpi.py                  # 47 test công thức tính điểm
-│   ├── test_ai.py                   # 46 test mô hình, bảo mật, cấu hình triển khai
+│   ├── test_ai.py                   # 67 test mô hình, sổ đăng ký, nhật ký, bảo mật
+│   ├── test_tro_ly.py               # 15 test bốn rào chắn của trợ lý hội thoại
 │   │
 │   ├── models/
 │   │   ├── schemas.py               # Đơn vị, cán bộ, nhiệm vụ, ý kiến, thông báo, nhật ký
@@ -246,7 +270,8 @@ smartwork-ai/
 │   │   ├── comments.py              # Ý kiến trao đổi
 │   │   ├── notifications.py         # Thông báo
 │   │   ├── kpi.py                   # Danh mục, quy trình 3 bước, xếp hạng, tiêu chí chung
-│   │   └── ai.py                    # 4 mô hình hỗ trợ ra quyết định
+│   │   ├── ai.py                    # Mô hình, sổ đăng ký, nhật ký gợi ý
+│   │   └── tro_ly.py                # Hỏi trợ lý, trạng thái chế độ đang chạy
 │   │
 │   ├── services/
 │   │   ├── kpi_service.py           # A, B, C, D · KPI · phân nhóm · KPI quý/năm
@@ -254,30 +279,43 @@ smartwork-ai/
 │   │   ├── seeder.py                # Sinh đơn vị, cán bộ, nhiệm vụ, ý kiến, thông báo
 │   │   ├── notification_service.py  # Gửi thông báo
 │   │   ├── audit_service.py         # Ghi nhật ký hệ thống
-│   │   └── ai/
-│   │       ├── __init__.py          # Hai ràng buộc bất di bất dịch của nhóm mô hình
-│   │       ├── assignment.py        # Gợi ý cán bộ phù hợp để giao nhiệm vụ
-│   │       ├── risk.py              # Cảnh báo sớm: rơi Nhóm 3 · nhiệm vụ trễ hạn
-│   │       ├── anomaly.py           # Phát hiện dấu hiệu chấm điểm hình thức
-│   │       └── guideline.py         # Tra cứu Hướng dẫn 20-HD/ĐUCA
+│   │   ├── so_dang_ky_mo_hinh.py    # Sổ đăng ký mô hình — nguồn duy nhất cho trang Mô hình
+│   │   ├── nhat_ky_goi_y.py         # Nhật ký gợi ý phân công (chỉ ghi quyết định, không ghi nội dung)
+│   │   ├── ai/
+│   │   │   ├── __init__.py          # Hai ràng buộc bất di bất dịch của nhóm mô hình
+│   │   │   ├── assignment.py        # Gợi ý cán bộ phù hợp để giao nhiệm vụ
+│   │   │   ├── risk.py              # Cảnh báo sớm: rơi Nhóm 3 · nhiệm vụ trễ hạn
+│   │   │   ├── anomaly.py           # Phát hiện dấu hiệu chấm điểm hình thức
+│   │   │   └── guideline.py         # Tra cứu Hướng dẫn 20-HD/ĐUCA
+│   │   └── tro_ly/
+│   │       ├── __init__.py          # Bốn rào chắn của trợ lý hội thoại
+│   │       ├── gemini.py            # Vòng gọi công cụ, tự lui về chế độ tại chỗ
+│   │       └── cong_cu.py           # 05 công cụ chỉ đọc, lọc theo độ mật và phân quyền
 │   │
 │   └── scripts/
-│       └── set_password.py          # Đặt mật khẩu mạnh cho bản triển khai
+│       ├── set_password.py          # Đặt mật khẩu mạnh cho bản triển khai
+│       └── mo_phong_cong_tac.py     # Mô phỏng cán bộ đi làm để dữ liệu demo không đứng yên
 │
 ├── frontend/
 │   └── src/
 │       ├── App.tsx                  # Định tuyến
 │       ├── components/
-│       │   ├── Layout.tsx           # Khung trang, menu theo thẩm quyền
-│       │   ├── TaskModal.tsx        # Biểu mẫu giao/sửa nhiệm vụ
+│       │   ├── Layout.tsx           # Khung trang, menu theo thẩm quyền, ô hỏi trợ lý
+│       │   ├── TaskModal.tsx        # Biểu mẫu giao/sửa nhiệm vụ, gợi ý phân công
 │       │   ├── EarlyWarning.tsx     # Khối cảnh báo sớm trên Trang chủ
+│       │   ├── DaiHoTroAI.tsx       # Dải "Mô hình đang hỗ trợ đồng chí" trên Trang chủ
+│       │   ├── KhungMoHinh.tsx      # Viền và nhãn khi bật chế độ Xem dấu vết AI
+│       │   ├── HopTraCuu.tsx        # Hộp trợ lý hội thoại, mở được ở mọi trang
+│       │   ├── TaskTitle.tsx        # Tên nhiệm vụ kèm dấu hiệu độ mật
 │       │   └── GuidelineLookup.tsx  # Ô tra cứu Hướng dẫn
 │       ├── lib/
 │       │   ├── api.ts               # Axios, gắn thẻ, tự làm mới khi hết hạn
 │       │   ├── task-api.ts          # API nhiệm vụ, nhãn tiếng Việt
 │       │   ├── kpi-api.ts           # API KPI
-│       │   └── ai-api.ts            # API các mô hình
-│       └── pages/                   # 15 trang giao diện (xem mục 13)
+│       │   ├── ai-api.ts            # API các mô hình, sổ đăng ký, nhật ký gợi ý
+│       │   ├── tro-ly-api.ts        # API trợ lý hội thoại
+│       │   └── dau-vet-ai.ts        # Công tắc và danh mục nhãn của chế độ Xem dấu vết AI
+│       └── pages/                   # 16 trang giao diện (xem mục 13)
 │
 ├── HUONG_DAN_SU_DUNG.md             # Hướng dẫn cho người dùng cuối
 ├── KICH_BAN_DEMO.md                 # 7 kịch bản trình diễn theo từng vai
@@ -286,8 +324,8 @@ smartwork-ai/
 └── render.yaml                      # Cấu hình triển khai backend
 ```
 
-**Quy mô mã nguồn**: khoảng **6.680 dòng** backend (Python) và **5.909 dòng** frontend
-(TypeScript/React), tổng khoảng **12.600 dòng**, không tính thư viện bên ngoài.
+**Quy mô mã nguồn**: khoảng **9.380 dòng** backend (Python) và **7.550 dòng** frontend
+(TypeScript/React), tổng khoảng **16.900 dòng**, không tính thư viện bên ngoài.
 
 ---
 
@@ -389,6 +427,7 @@ kpi_evaluations
 | `comments` | Ý kiến trao đổi trên từng nhiệm vụ |
 | `notifications` | Thông báo: giao việc, nhắc nhở, yêu cầu chỉnh sửa, đến kỳ tự đánh giá, đã xác định điểm |
 | `audit_logs` | Nhật ký: người thực hiện, hành động, đối tượng, thời điểm — gồm cả `task.classified_access` và `task.classified_denied` |
+| `ai_suggestion_logs` | Nhật ký gợi ý phân công: người quyết định, đơn vị, người được chọn, **thứ hạng trong danh sách mô hình đưa ra**, điểm hạng 1 và điểm người được chọn. Không lưu tên hay nội dung nhiệm vụ (mục 9.7) |
 
 ---
 
@@ -587,7 +626,7 @@ Sau đó chấm **điểm tiêu chí chung (E)** để ra tổng điểm xếp l
 
 ---
 
-## 9. BỐN MÔ HÌNH HỖ TRỢ RA QUYẾT ĐỊNH
+## 9. CÁC MÔ HÌNH HỖ TRỢ RA QUYẾT ĐỊNH
 
 ### 9.1 Hai ràng buộc bất di bất dịch
 
@@ -599,7 +638,13 @@ pháp quy; nếu mô hình đề xuất điểm thì mất căn cứ pháp lý k
 
 **2. Không một byte dữ liệu nào rời hệ thống.** Toàn bộ tính toán chạy tại chỗ; không import `requests`,
 `httpx`, `openai`, `google.generativeai` hay bất kỳ thư viện gọi mạng nào. **Có test tự động quét mã nguồn
-để kiểm điều này.**
+để kiểm điều này**, và một test thứ hai chặn mọi lệnh ghi cơ sở dữ liệu (`insert_*`, `update_*`, `delete_*`)
+trong gói.
+
+**Ngoại lệ duy nhất, và nó nằm ngoài gói này:** trợ lý hội thoại ở `backend/services/tro_ly` có gọi mô hình
+ngôn ngữ bên ngoài. Trợ lý không tính điểm, không xếp hạng ai, chỉ diễn đạt lại dữ liệu người hỏi vốn đã có
+quyền xem — và nó có bốn rào chắn riêng, mỗi rào chắn một test (mục 9.6). Ranh giới được đặt thành **hai gói
+thư mục tách biệt** để nhìn thấy được ngay trong cấu trúc mã nguồn, không phải chỉ nằm trong lời cam kết.
 
 Hệ quả kỹ thuật: ưu tiên mô hình **giải thích được**. Cơ quan nhà nước không chấp nhận hộp đen — mọi kết quả
 phải nêu được lý do, nên hệ thống dùng công thức có trọng số và hồi quy logistic thay vì mô hình phức tạp
@@ -626,8 +671,10 @@ loại bắt buộc; cán bộ đang mang tải quá **130%** định mức cũn
 Mốc chuẩn hoá 7 lần sửa và 4 lần nhắc lấy đúng từ bảng mức của Hướng dẫn — là ngưỡng mà công việc không
 còn được tính điểm.
 
-> **Mức độ hoàn thiện**: phần xử lý và endpoint đã hoàn chỉnh, đã có sẵn hàm gọi ở `frontend/src/lib/ai-api.ts`,
-> nhưng **chưa gắn vào màn hình giao nhiệm vụ**. Đây là hạng mục đang tiếp tục hoàn thiện.
+Trên giao diện, gợi ý nằm ngay trong hộp **giao / sửa nhiệm vụ**: mỗi cán bộ được đề xuất hiển thị điểm phù
+hợp kèm **thanh tách 5 thành phần** (ví dụ *Dư địa tải việc 31,1/35 · Chất lượng lịch sử 23,2/25 …*), nên lãnh
+đạo thấy được vì sao người này xếp trên người kia chứ không chỉ thấy một con số tổng. Mỗi lượt giao có mở gợi
+ý đều được ghi vào nhật ký để đo mức độ làm theo gợi ý — xem mục 9.7.
 
 ### 9.3 Mô hình 2 — Cảnh báo sớm nguy cơ (hai mô hình hồi quy logistic)
 
@@ -707,11 +754,101 @@ Gồm hai phần:
 **Điểm mấu chốt**: mọi câu trả lời về con số lấy **trực tiếp từ hằng số của bộ máy chấm điểm** (`kpi_service`),
 nên luôn khớp với điều hệ thống thực sự tính — ràng buộc này được khoá bằng test riêng.
 
-Sản phẩm **chủ ý không dùng mô hình ngôn ngữ lớn** ở đây: đây là văn bản pháp quy, cán bộ cần nguyên văn điều
-khoản để trích dẫn chứ không cần bản diễn giải có thể sai lệch; và một mô hình sinh văn bản không bảo đảm được
-sự trùng khớp tuyệt đối với bộ máy chấm điểm.
+Sản phẩm **chủ ý không để mô hình ngôn ngữ tự sinh ra con số** ở đây: đây là văn bản pháp quy, cán bộ cần
+nguyên văn điều khoản để trích dẫn chứ không cần bản diễn giải có thể sai lệch; và một mô hình sinh văn bản
+không bảo đảm được sự trùng khớp tuyệt đối với bộ máy chấm điểm. Trợ lý hội thoại ở mục 9.6 **gọi chính
+module này như một công cụ** rồi mới diễn đạt lại — con số vẫn do máy tra cứu tại chỗ cấp.
 
-Hiển thị dưới dạng ô tra cứu ngay trong màn hình **Quy trình đánh giá**.
+Hiển thị dưới dạng ô tra cứu ngay trong màn hình **Quy trình đánh giá**, và là một trong năm công cụ của trợ lý.
+
+### 9.6 Mô hình 5 — Trợ lý hội thoại có kết nối mô hình ngôn ngữ
+
+`backend/services/tro_ly/` — **gói duy nhất trong hệ thống được gọi dịch vụ bên ngoài**
+
+Cán bộ hỏi bằng lời thường: *"Tôi còn mấy việc quá hạn?"*, *"KPI của tôi năm nay thế nào?"*,
+*"Sửa 3 lần thì tính bao nhiêu phần trăm?"*. Trợ lý chọn công cụ để **lấy số liệu thật** rồi mới diễn đạt lại,
+nên câu trả lời bám đúng dữ liệu chứ không phải do mô hình tự nghĩ ra.
+
+**Bốn rào chắn, mỗi rào chắn một test trong `backend/test_tro_ly.py`:**
+
+| # | Rào chắn | Cách bảo đảm |
+|---|---|---|
+| 1 | **Chỉ đọc** | Không công cụ nào ghi vào cơ sở dữ liệu. Trợ lý không giao việc, không nhắc nhở, không chấm điểm, không đổi trạng thái hồ sơ |
+| 2 | **Không quyết định điểm KPI** | Mọi con số về cách tính điểm lấy từ `services/ai/guideline`, tức từ chính hằng số của bộ máy chấm điểm — mô hình chỉ diễn đạt lại |
+| 3 | **Không gửi nhiệm vụ có độ mật ra ngoài** | Ngay cả tên gọi quy ước và mã hiệu cũng không được đưa vào lời nhắc. Nhiệm vụ có độ mật **chỉ được đếm, không được kể tên** — mọi công cụ trả về nhiệm vụ đều đi qua `loc_mat()` |
+| 4 | **Phạm vi dữ liệu đúng bằng phân quyền người hỏi** | Cán bộ đọc dữ liệu của chính mình; lãnh đạo đọc trong đơn vị mình; quản trị đọc toàn bộ. Công cụ nhận người hỏi và **tự áp phạm vi, không tin tham số do mô hình sinh ra** |
+
+**Năm công cụ chỉ đọc**: tra cứu Hướng dẫn · nhiệm vụ công tác · kết quả KPI · tổng quan đơn vị ·
+danh sách cán bộ cần lưu ý. Tối đa **4 vòng** gọi công cụ cho một câu hỏi.
+
+**Tự lui về chế độ tại chỗ.** Thiếu `GEMINI_API_KEY` hoặc dịch vụ trục trặc thì trợ lý dùng máy tra cứu tại chỗ
+ở mục 9.5 và **hộp chat nói rõ đang ở chế độ nào** thay vì im lặng trả lời kém đi. Nhờ vậy hệ thống triển khai
+được trong mạng nội bộ không có kết nối ra ngoài: phần tra cứu văn bản giữ nguyên, phần mất đi là khả năng hiểu
+câu hỏi diễn đạt tự do.
+
+Lối vào là ô **"Hỏi trợ lý…"** trên thanh tiêu đề, mở được ở mọi trang; câu hỏi gợi ý đổi theo trang đang xem.
+Mỗi câu trả lời hiển thị **nguồn số liệu** đã dùng dưới dạng nhãn công cụ, để người đọc biết câu trả lời dựa vào đâu.
+
+### 9.7 Nhật ký gợi ý phân công — đo "người quyết định" bằng số
+
+`backend/services/nhat_ky_goi_y.py` · collection `ai_suggestion_logs`
+
+Cả hệ thống dựa trên một tuyên bố: *mô hình chỉ gợi ý, người có thẩm quyền quyết định*. Tuyên bố ấy trước đây
+không kiểm chứng được bằng gì — người đọc chỉ có thể tin hoặc không tin. Nay nó là con số.
+
+Mỗi lượt giao nhiệm vụ **có mở gợi ý phân công** được ghi lại: người được chọn đứng thứ mấy trong danh sách mô
+hình đưa ra, hay hoàn toàn ngoài danh sách. Trang **Mô hình hỗ trợ ra quyết định** hiển thị:
+
+```
+28/131 lượt lãnh đạo chọn người NGOÀI danh sách mô hình đưa ra
+├── Chọn đúng người mô hình xếp đầu    78 (60%)
+├── Chọn người khác trong danh sách    25 (19%)
+└── Chọn người ngoài danh sách         28 (21%)
+```
+
+**Cột cuối mới là cột đáng giá.** Tỷ lệ làm theo gợi ý đạt 100% mới là dấu hiệu xấu — nó nghĩa là lãnh đạo đã
+bấm theo máy chứ không còn cân nhắc. Lượt chọn người ngoài danh sách cũng không phải mô hình sai: mô hình chỉ
+nhìn được số liệu tải việc và lịch sử, còn lãnh đạo biết những điều hệ thống không có — ai đang đi học, ai vừa
+nhận việc đột xuất, ai cần được giao việc khó để rèn.
+
+Ba ràng buộc của sổ, mỗi ràng buộc một test:
+
+- **Không ghi tên hay nội dung nhiệm vụ** — chỉ mã, thứ hạng và điểm. Nhiệm vụ có độ mật đi qua đây cũng không
+  để lại chữ nào về nội dung.
+- **Chỉ chạm `ai_suggestion_logs`**, tuyệt đối không đụng `kpi_evaluations` — ghi nhận một quyết định phân công
+  không được phép làm xê dịch điểm KPI của bất kỳ ai.
+- **Đặt ngoài `services/ai`** để gói mô hình vẫn thuần đọc.
+
+Giao diện chỉ gửi nhật ký **sau khi nhiệm vụ đã lưu thành công**; ghi trước thì sổ đầy những quyết định chưa
+từng xảy ra. Lỗi khi gửi nhật ký bị bỏ qua có chủ đích — đây là số liệu theo dõi, không được làm hỏng việc giao
+nhiệm vụ của người dùng.
+
+### 9.8 Trang Mô hình hỗ trợ ra quyết định và chế độ Xem dấu vết AI
+
+Năm mô hình ra quyết định đều nằm chìm trong quy trình nghiệp vụ: người dùng thấy kết quả nhưng không biết đó
+là mô hình tính ra. Hai cơ chế dưới đây mở chúng ra cho người xem.
+
+**Trang `/kpi/models`** (lãnh đạo, chỉ huy trở lên) — mỗi mô hình một thẻ gồm mục đích, thuật toán, **lý do chọn
+thuật toán đó**, tham số đang dùng, nơi đang được dùng (bấm là nhảy thẳng tới). Riêng hai mô hình hồi quy hiển
+thị thêm phần định lượng: AUC so ngưỡng 0,70, số mẫu và số trường hợp dương, **ma trận nhầm lẫn** ghi bằng lời
+(*báo đúng · bỏ sót · báo oan*), và **bảng hệ số từng đặc trưng** sắp theo mức ảnh hưởng — nhìn là thấy ngay mô
+hình giải thích được chứ không phải hộp đen. Quản trị hệ thống có thêm nút huấn luyện lại.
+
+Toàn bộ nội dung trang lấy từ **sổ đăng ký** ở `backend/services/so_dang_ky_mo_hinh.py`: trọng số, ngưỡng, số
+điều khoản và chỉ số chất lượng đều đọc thẳng từ chính hằng số các mô hình đang dùng. Sửa thuật toán là trang tự
+đổi theo — mô tả viết cứng trong giao diện sẽ lệch khỏi mã nguồn ngay lần sửa đầu tiên, và một trang mô tả sai
+còn tệ hơn không có trang nào. Endpoint `GET /api/ai/models` **chỉ đọc**: mở trang xem không được làm đổi mô
+hình mà cả đơn vị đang dùng.
+
+**Chế độ Xem dấu vết AI** — công tắc trên thanh tiêu đề. Bật lên thì mọi khối do mô hình sinh ra trên trang đang
+xem được viền lại và gắn nhãn *"Mô hình 1 · Nguy cơ rơi Nhóm 3 · chạy tại chỗ"*; bấm nhãn là sang đúng thẻ mô
+hình ở trang trên. Tắt đi thì giao diện trở lại y nguyên. Đây là lớp phủ để xem và để minh hoạ, không phải giao
+diện làm việc hằng ngày.
+
+**Dải "Mô hình đang hỗ trợ đồng chí"** trên Trang chủ luôn hiện, kể cả kỳ không có cảnh báo nào: số mô hình đang
+chạy và bao nhiêu chạy tại chỗ, dấu hiệu cần rà soát kỳ này, số điều khoản tra cứu được, chế độ hiện tại của trợ
+lý. Số thẻ do máy chủ quyết định theo chức vụ người xem — dấu hiệu rà soát là số liệu của cấp lãnh đạo đơn vị,
+không hiện cho cán bộ không giữ chức vụ.
 
 ---
 
@@ -781,7 +918,9 @@ Thứ bậc `admin (3) > director (2) > leader (1) > staff (0)`.
 | Tạo, duyệt Danh mục nhiệm vụ | — | — | ✅ | ✅ |
 | Rà soát chất lượng (mô hình 3) | — | — | ✅ | ✅ |
 | Cảnh báo sớm, gợi ý phân công | — | ✅ | ✅ | ✅ |
+| Trang Mô hình · chế độ Xem dấu vết AI | — | ✅ | ✅ | ✅ |
 | Tra cứu Hướng dẫn | ✅ | ✅ | ✅ | ✅ |
+| Hỏi trợ lý hội thoại (phạm vi = quyền của chính mình) | ✅ | ✅ | ✅ | ✅ |
 | Quản lý cán bộ | — | — | ✅ | ✅ |
 | Quản lý đơn vị · nhật ký · huấn luyện lại mô hình | — | — | — | ✅ |
 
@@ -879,8 +1018,18 @@ cookie phiên, nên trang web lạ dù được phép gọi API cũng không đ�
 | GET | `/anomalies` | director+ | Dấu hiệu chấm điểm hình thức |
 | GET | `/guideline/search` | Đã đăng nhập | Tra cứu Hướng dẫn 20-HD/ĐUCA |
 | GET | `/guideline/clauses` | Đã đăng nhập | Toàn bộ điều khoản đã lập chỉ mục |
+| GET | `/models` | leader+ | Sổ đăng ký mô hình: thuật toán, lý do chọn, tham số, AUC, ma trận nhầm lẫn, hệ số. **Chỉ đọc, không huấn luyện lại** |
+| GET | `/tom-tat` | Đã đăng nhập | Dải "Mô hình đang hỗ trợ đồng chí" trên Trang chủ; số thẻ thay đổi theo chức vụ |
+| POST | `/nhat-ky-goi-y` | leader+ | Ghi một lượt giao nhiệm vụ có mở gợi ý phân công |
 
-### 12.6 Khác
+### 12.6 Trợ lý hội thoại — `/api/tro-ly`
+
+| Phương thức | Đường dẫn | Thẩm quyền | Mô tả |
+|---|---|---|---|
+| POST | `/hoi` | Đã đăng nhập | Hỏi trợ lý; phạm vi dữ liệu đúng bằng phân quyền người hỏi |
+| GET | `/trang-thai` | Đã đăng nhập | Đang chạy chế độ có mô hình ngôn ngữ hay chế độ tại chỗ |
+
+### 12.7 Khác
 
 | Phương thức | Đường dẫn | Thẩm quyền | Mô tả |
 |---|---|---|---|
@@ -908,7 +1057,8 @@ Nhiệm vụ công tác
 ├── Tổng quan KPI                /kpi
 ├── Quy trình đánh giá           /kpi/evaluate        (kèm ô Tra cứu Hướng dẫn)
 ├── Tiêu chí chung (E)           /kpi/criteria        (leader+)
-└── Kết quả xếp loại             /kpi/results
+├── Kết quả xếp loại             /kpi/results
+└── Mô hình hỗ trợ ra quyết định /kpi/models          (leader+)
 
 Quản lý
 ├── Cán bộ                       /employees           (director+)
@@ -919,16 +1069,20 @@ Khác
 ├── Hồ sơ cán bộ                 /employees/:id
 ├── Thông báo                    /notifications
 └── Hồ sơ cá nhân                /profile
+
+Trên thanh tiêu đề — mọi trang
+├── Ô "Hỏi trợ lý…"                                   (mở hộp trợ lý hội thoại)
+└── Công tắc "Dấu vết AI"                             (leader+)
 ```
 
 ### 13.2 Các trang
 
 | Trang | Nội dung chính |
 |---|---|
-| **Trang chủ** | Nhiệm vụ trong tháng, số quá hạn, KPI kỳ gần nhất, KPI bình quân năm, biểu đồ diễn biến KPI theo tháng, phân bố chất lượng và tiến độ, **khối Cảnh báo sớm** |
+| **Trang chủ** | Nhiệm vụ trong tháng, số quá hạn, KPI kỳ gần nhất, KPI bình quân năm, biểu đồ diễn biến KPI theo tháng, phân bố chất lượng và tiến độ, **dải Mô hình đang hỗ trợ đồng chí**, **khối Cảnh báo sớm** kèm căn cứ của từng cảnh báo |
 | **Cơ cấu tổ chức** | Cây đơn vị nhiều cấp; chọn đơn vị để xem số cán bộ (gồm cấp dưới), KPI tập thể, phân bố nhóm xếp loại, bảng cán bộ kèm cột tải việc và cấp độ tiếp cận |
 | **Hồ sơ cán bộ** | Định danh, số hiệu CAND, cấp độ tiếp cận, tải việc, thống kê nhiệm vụ trong kỳ, tổng số lần sửa (→ B) và nhắc nhở (→ C), biểu đồ diễn biến KPI |
-| **Nhiệm vụ được giao** | Bảng nhiệm vụ kèm mã hiệu, độ mật, điểm, số lượng, hạn; tổng điểm được giao và **A / B / C dự kiến**; nút nhắc nhở và yêu cầu chỉnh sửa |
+| **Nhiệm vụ được giao** | Bảng nhiệm vụ kèm mã hiệu, độ mật, điểm, số lượng, hạn; tổng điểm được giao và **A / B / C dự kiến**; nút nhắc nhở và yêu cầu chỉnh sửa; hộp giao nhiệm vụ có **gợi ý phân công kèm thanh tách 5 thành phần** |
 | **Danh mục nhiệm vụ** | Xây dựng Khung Danh mục theo năm; trạng thái Bản nháp / Đã duyệt |
 | **Tổng quan KPI** | Biểu đồ KPI toàn đơn vị theo năm, phân bố cán bộ theo 3 nhóm |
 | **Quy trình đánh giá** | Thực hiện 03 bước; chọn mức chất lượng và tiến độ kèm tỷ lệ phần trăm; ô tra cứu Hướng dẫn |
@@ -936,13 +1090,18 @@ Khác
 | **Kết quả xếp loại** | Bảng điểm chi tiết A, B, C, D, KPI, E, tổng điểm; xếp nhóm theo ngưỡng 70 / 50 |
 | **Cán bộ** | Quản lý cấp bậc hàm, chức vụ, số hiệu, đơn vị, thẩm quyền, **cấp độ tiếp cận** |
 | **Rà soát chất lượng** | Danh sách dấu hiệu chấm hình thức kèm mức độ, bằng chứng số liệu, khuyến nghị; nút huấn luyện lại mô hình |
+| **Mô hình hỗ trợ ra quyết định** | Hai ranh giới cứng; chỉ số "ai là người quyết định"; sáu thẻ mô hình kèm lý do chọn thuật toán, tham số, AUC so ngưỡng, ma trận nhầm lẫn và bảng hệ số; công tắc Xem dấu vết AI (mục 9.8) |
 | **Nhật ký hệ thống** | Lịch sử thao tác, gồm nhật ký truy cập nhiệm vụ có độ mật |
 
 ### 13.3 Phong cách
 
 Giao diện sáng, bố cục hành chính, **toàn bộ bằng tiếng Việt**, dùng đúng thuật ngữ của Hướng dẫn.
 Menu bên trái chia theo nhóm nghiệp vụ, mục ngoài thẩm quyền không hiển thị. Trên thiết bị di động
-menu thu vào nút ☰. Số thông báo chưa đọc tự làm mới mỗi 30 giây.
+menu thu vào nút ☰ và ô hỏi trợ lý thu về một biểu tượng. Số thông báo chưa đọc tự làm mới mỗi 30 giây.
+
+Mọi khối do mô hình sinh ra đều **nói rõ căn cứ**: cảnh báo sớm nêu ba yếu tố đóng góp nhiều nhất dưới dạng
+chip có mũi tên chỉ chiều tác động; gợi ý phân công vẽ thanh 5 thành phần; câu trả lời của trợ lý hiển thị nhãn
+công cụ đã dùng. Bật **Dấu vết AI** thì các khối đó được viền và gắn số hiệu mô hình.
 
 ---
 
@@ -1001,6 +1160,8 @@ Dữ liệu mẫu được thiết kế để mọi trường hợp của Hướ
 6. Đủ **04 loại nhiệm vụ** và **04 độ mật**; cán bộ có cấp độ tiếp cận khác nhau.
 7. Điểm D suy ra từ tỷ lệ cán bộ thuộc quyền đạt Nhóm 1 hoặc Nhóm 2.
 8. Ràng buộc KPI người đứng đầu không cao hơn KPI tập thể.
+9. **Nhật ký gợi ý phân công** cho khoảng 40% số nhiệm vụ, với tỷ lệ có chủ đích: khoảng ba phần tư số lượt
+   làm theo gợi ý, một phần tư chọn người ngoài danh sách. Đồng thuận 100% mới là con số đáng ngờ — xem mục 9.7.
 
 Điểm A, B, C của dữ liệu mẫu được **tính từ chính các hàm nghiệp vụ đang dùng thật**, nên số liệu luôn
 nhất quán với công thức.
@@ -1014,12 +1175,14 @@ pip install -r backend/requirements-dev.txt
 pytest -v
 ```
 
-**93 test**, thuần logic, không cần kết nối cơ sở dữ liệu thật (dùng CSDL giả trong bộ nhớ).
+**129 test**, thuần logic, không cần kết nối cơ sở dữ liệu thật (dùng CSDL giả trong bộ nhớ)
+và **không gọi mạng** — trợ lý được kiểm bằng máy chủ giả.
 
 | Tệp | Số test | Nội dung |
 |---|---|---|
 | `backend/test_kpi.py` | 47 | Công thức tính điểm |
-| `backend/test_ai.py` | 46 | Mô hình hỗ trợ ra quyết định, ràng buộc bảo mật, cấu hình triển khai |
+| `backend/test_ai.py` | 67 | Mô hình, sổ đăng ký, nhật ký gợi ý, ràng buộc bảo mật, cấu hình triển khai |
+| `backend/test_tro_ly.py` | 15 | Bốn rào chắn của trợ lý hội thoại |
 
 **`test_kpi.py`** kiểm chứng: 06 mức chất lượng và 06 mức tiến độ; mức không xác định phải cho 0 điểm;
 suy điểm từng nhiệm vụ từ mức đã chấm; A, B, C chỉ tính công việc đã hoàn thành, chia cho 0 an toàn,
@@ -1029,8 +1192,24 @@ tổng điểm mục con; trần KPI người đứng đầu.
 
 **`test_ai.py`** kiểm chứng: máy quy tắc tra cứu trả đúng mức điểm cho mọi số lần sửa và nhắc nhở; câu trả
 lời khớp **cùng hằng số** mà bộ máy chấm điểm dùng; 05 dấu hiệu chấm hình thức được nhận diện đúng và
-**không báo động giả** khi dữ liệu bình thường; **không module AI nào import thư viện gọi mạng**; cấu hình
-CORS chỉ chấp nhận đúng tên miền hợp lệ và từ chối tên miền giả mạo; cờ `ALLOW_DEMO_ACCOUNTS` mặc định tắt.
+**không báo động giả** khi dữ liệu bình thường; **không module AI nào import thư viện gọi mạng** và **không
+module nào ghi cơ sở dữ liệu**; mọi truy vấn trong gói mô hình đều có projection; nhiệm vụ có độ mật không lọt
+trường bị che vào projection; cấu hình CORS chỉ chấp nhận đúng tên miền hợp lệ và từ chối tên miền giả mạo; cờ
+`ALLOW_DEMO_ACCOUNTS` mặc định tắt.
+
+Nhóm test của **sổ đăng ký mô hình** khoá mối nối giữa ba nơi — sổ đăng ký, hằng số của từng mô hình, và nhãn
+dấu vết AI trong giao diện: mỗi mô hình phải nêu được lý do chọn thuật toán; **đúng một** mô hình được đánh dấu
+gọi ra ngoài; trọng số in ra trang phải là trọng số mô hình thực sự dùng; số hiệu và tên trên nhãn dấu vết phải
+trùng sổ đăng ký; mọi đường dẫn thẻ dẫn tới phải có route thật trong `App.tsx`.
+
+Nhóm test của **nhật ký gợi ý phân công**: bản ghi không mang theo trường nội dung nhiệm vụ nào; sổ chỉ chạm
+`ai_suggestion_logs` và **không ghi vào `kpi_evaluations`**; ba mức độ làm theo gợi ý được tách đúng; chưa có
+lượt nào thì trả tổng 0 chứ không trả rỗng.
+
+**`test_tro_ly.py`** kiểm chứng bốn rào chắn ở mục 9.6: không công cụ nào ghi cơ sở dữ liệu; số liệu về cách
+tính điểm lấy đúng hằng số của `kpi_service`; nhiệm vụ có độ mật **chỉ được đếm, không lọt tên ra lời nhắc**;
+phạm vi dữ liệu đúng bằng phân quyền người hỏi. Trợ lý được kiểm bằng máy chủ giả nên **test không cần khoá API
+và không gọi ra ngoài**.
 
 **Test quan trọng nhất** — tái lập ví dụ mẫu tại Phụ lục:
 
@@ -1071,6 +1250,8 @@ uvicorn backend.main:app --reload
 | `CORS_ORIGINS` | — | Cộng thêm tên miền riêng |
 | `CORS_ORIGIN_REGEX` | — | Ghi đè mẫu khớp tên miền mặc định |
 | `ALLOW_DEMO_ACCOUNTS` | — | Cho phép mật khẩu mặc định; **để `false` khi chạy thật** |
+| `GEMINI_API_KEY` | — | Khoá mô hình ngôn ngữ cho trợ lý hội thoại. **Không đặt thì trợ lý tự chạy chế độ tại chỗ**; mọi chức năng khác không phụ thuộc biến này |
+| `GEMINI_MODEL` | — | Mặc định `gemini-flash-lite-latest`. Nên dùng bí danh `-latest`, không ghim phiên bản cố định |
 
 Tài liệu API tự sinh: `http://localhost:8000/docs`
 
@@ -1106,20 +1287,24 @@ python -m backend.scripts.set_password admin
 |---|---|
 | **Bám sát văn bản** | Công thức, mức điểm, quy trình, khung tiêu chí chung lấy nguyên theo Hướng dẫn 20-HD/ĐUCA |
 | **Đã chạy được** | Bản triển khai công khai dùng thử ngay trên trình duyệt, không cần cài đặt |
-| **Chi phí** | Toàn bộ nguồn mở; không phụ thuộc dịch vụ AI trả phí; chạy được trên gói miễn phí |
+| **Chi phí** | Toàn bộ nguồn mở; năm mô hình ra quyết định chạy tại chỗ, **không tốn phí dịch vụ AI**; trợ lý hội thoại dùng gói miễn phí và không có khoá thì tự lui về chế độ tại chỗ |
 | **Độ phức tạp kỹ thuật** | Trung bình — Python và React phổ biến, dễ tiếp nhận, bảo trì |
 | **Đào tạo người dùng** | Dễ — giao diện tiếng Việt, dùng đúng thuật ngữ của Hướng dẫn; có tài liệu và kịch bản demo |
 | **Bảo mật** | Băm bcrypt, JWT, phân quyền 4 cấp ở tầng máy chủ, nhật ký đầy đủ, chặn mật khẩu mặc định |
-| **Kiểm chứng được** | 93 test tự động, trong đó có test tái lập ví dụ mẫu của Phụ lục |
+| **Kiểm chứng được** | 129 test tự động, trong đó có test tái lập ví dụ mẫu của Phụ lục |
+| **Minh bạch mô hình** | Trang Mô hình công khai thuật toán, tham số và chất lượng đo được; chỉ số "ai là người quyết định" đo bằng số |
 
 ### 17.2 Hạn chế còn tồn tại
 
 Nêu rõ để việc đánh giá được khách quan:
 
 1. **Chỉ số AUC trên dữ liệu mẫu không phản ánh hiệu quả thực tế** — xem ghi chú ở mục 9.3.
-2. **Chức năng gợi ý phân công chưa gắn giao diện** — phần xử lý và endpoint đã hoàn chỉnh.
-3. **Mật khẩu mẫu yếu** (`123456789a`), bắt buộc đổi trước khi đưa dữ liệu thật vào.
-4. **Không dùng cho bí mật nhà nước** với hạ tầng hiện tại — xem mục 10.3.
+2. **Chỉ số "ai là người quyết định" trên bản chạy thử là dữ liệu sinh sẵn**, không phải thao tác thật của cán
+   bộ; ghi chú ngay trên giao diện nói rõ điều này. Chỉ số chỉ có ý nghĩa sau vài kỳ vận hành thật.
+3. **Trợ lý hội thoại phụ thuộc hạn mức miễn phí** của dịch vụ mô hình ngôn ngữ. Hết hạn mức hoặc không cấu hình
+   khoá thì trợ lý lui về máy tra cứu tại chỗ — trả lời được về cách tính điểm nhưng không hiểu câu hỏi tự do.
+4. **Mật khẩu mẫu yếu** (`123456789a`), bắt buộc đổi trước khi đưa dữ liệu thật vào.
+5. **Không dùng cho bí mật nhà nước** với hạ tầng hiện tại — xem mục 10.3.
 
 ### 17.3 Khả năng mở rộng
 
@@ -1128,13 +1313,15 @@ Nêu rõ để việc đánh giá được khách quan:
 | **Xuất báo cáo** | Kết xuất bảng điểm và phiếu đánh giá ra Excel / PDF theo đúng mẫu Phụ lục |
 | **Ký số** | Tích hợp chữ ký số cho hồ sơ ở Bước 3 |
 | **Trang KPI quý, năm** | Công thức bình quân đã có sẵn ở backend, chỉ cần bổ sung giao diện |
-| **Gắn gợi ý phân công vào màn hình giao việc** | Endpoint và hàm gọi đã sẵn sàng |
+| **Theo dõi chất lượng mô hình theo thời gian** | Sổ đăng ký đã lưu AUC mỗi lần huấn luyện; chỉ cần bổ sung biểu đồ diễn biến để phát hiện mô hình lệch dần |
+| **Mở rộng nhật ký gợi ý sang các mô hình khác** | Cơ chế đã có; áp cho cảnh báo sớm sẽ đo được lãnh đạo có xử lý cảnh báo hay không |
+| **Trợ lý chạy mô hình ngôn ngữ nội bộ** | Kiến trúc gọi công cụ không gắn với nhà cung cấp nào; thay điểm gọi trong `services/tro_ly/gemini.py` là chuyển được sang mô hình đặt tại đơn vị |
 | **Đồng bộ nhân sự** | Kết nối hệ thống quản lý cán bộ để đồng bộ cấp bậc hàm, chức vụ, đơn vị |
 | **Triển khai mạng nội bộ** | Kiến trúc tách rời cho phép chuyển vào hạ tầng nội bộ mà không sửa mã nguồn |
 | **Phân cấp sâu hơn** | Cây đơn vị đã hỗ trợ nhiều cấp, mở rộng để tổng hợp KPI theo toàn bộ cây |
 
 ---
 
-> **Tài liệu này mô tả hệ thống ở phiên bản 3.0.0.**
+> **Tài liệu này mô tả hệ thống ở phiên bản 3.1.0.**
 > Hướng dẫn thao tác cho người dùng cuối: `HUONG_DAN_SU_DUNG.md`
 > Kịch bản trình diễn: `KICH_BAN_DEMO.md`
