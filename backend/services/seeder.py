@@ -131,6 +131,7 @@ async def run_seed():
         db.users, db.departments, db.tasks, db.comments,
         db.notifications, db.audit_logs,
         db.kpi_task_catalog, db.kpi_evaluations,
+        db.ai_suggestion_logs,
     ):
         await coll.delete_many({})
 
@@ -393,6 +394,60 @@ async def run_seed():
     res_tasks = await db.tasks.insert_many(task_docs)
     task_ids = res_tasks.inserted_ids
     print(f"  Nhiệm vụ công tác: {len(task_docs)}")
+
+    # ---------- 7b. Nhật ký gợi ý phân công ----------
+    #
+    # Khối này sinh dữ liệu cho chỉ số "lãnh đạo làm theo gợi ý bao nhiêu lượt".
+    # Không sinh thì trang Mô hình hiện 0/0 và người xem tưởng hệ thống không có
+    # cơ chế theo dõi, trong khi thứ thiếu chỉ là dữ liệu.
+    #
+    # Tỷ lệ đặt ở mức có chủ đích: khoảng ba phần tư số lượt làm theo gợi ý, một
+    # phần tư chọn người ngoài danh sách. Đồng thuận 100% mới là con số đáng ngờ —
+    # nó nghĩa là lãnh đạo bấm theo máy chứ không cân nhắc nữa.
+    ten_theo_id = {str(u["_id"]): u["name"] for u in all_users}
+    ten_theo_id[admin_id] = "Quản trị viên hệ thống"
+
+    nhat_ky_goi_y_docs = []
+    for tid, t in zip(task_ids, task_docs):
+        # Không phải lượt giao nào lãnh đạo cũng mở gợi ý
+        if rng.random() > 0.4:
+            continue
+
+        r = rng.random()
+        if r < 0.55:
+            xep_hang = 1
+        elif r < 0.75:
+            xep_hang = rng.randint(2, 5)
+        else:
+            xep_hang = None  # chọn người hoàn toàn ngoài danh sách
+
+        diem_hang_1 = round(rng.uniform(82.0, 99.0), 1)
+        nguoi_quyet_dinh = t["assigned_by"]
+        nhat_ky_goi_y_docs.append({
+            "ma_mo_hinh": "goi_y_phan_cong",
+            "nhiem_vu_id": str(tid),
+            "nguoi_quyet_dinh_id": nguoi_quyet_dinh,
+            "nguoi_quyet_dinh_ten": ten_theo_id.get(nguoi_quyet_dinh),
+            "department_id": t["department_id"],
+            "da_chon_id": t["assigned_to"],
+            "xep_hang_da_chon": xep_hang,
+            "so_goi_y": 5,
+            "diem_hang_1": diem_hang_1,
+            "diem_da_chon": (
+                diem_hang_1 if xep_hang == 1
+                else round(diem_hang_1 - rng.uniform(2.0, 15.0), 1) if xep_hang
+                else None
+            ),
+            "created_at": t["assigned_at"],
+        })
+
+    if nhat_ky_goi_y_docs:
+        await db.ai_suggestion_logs.insert_many(nhat_ky_goi_y_docs)
+    theo_goi_y = sum(1 for d in nhat_ky_goi_y_docs if d["xep_hang_da_chon"])
+    print(
+        f"  Lượt giao có mở gợi ý: {len(nhat_ky_goi_y_docs)} "
+        f"· làm theo gợi ý {theo_goi_y}"
+    )
 
     # ---------- 8. Ý kiến trao đổi ----------
     user_map = {str(u["_id"]): u["name"] for u in all_users}

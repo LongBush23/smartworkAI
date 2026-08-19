@@ -81,7 +81,8 @@ interface Props {
   canEdit: boolean;
   currentUser?: any;
   onClose: () => void;
-  onSave: (data: Partial<Task>) => void;
+  /** Trả về mã nhiệm vụ đã lưu, null nếu lưu hỏng. */
+  onSave: (data: Partial<Task>) => Promise<string | null>;
 }
 
 const emptyForm = {
@@ -209,7 +210,27 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  /**
+   * Ghi lại lãnh đạo đã làm theo gợi ý tới đâu.
+   *
+   * Chỉ ghi khi có mở gợi ý VÀ nhiệm vụ đã lưu xong. Thứ hạng null nghĩa là chọn
+   * người ngoài danh sách — đây mới là trường hợp đáng ghi nhất, vì nó chứng minh
+   * mô hình không quyết định thay người.
+   */
+  const ghiNhatKyGoiY = (nhiemVuId: string | null) => {
+    if (!goiY || !form.assigned_to) return;
+    const viTri = goiY.suggested.findIndex(s => s.id === form.assigned_to);
+    aiApi.ghiNhatKyGoiY({
+      nhiem_vu_id: nhiemVuId,
+      da_chon_id: form.assigned_to,
+      xep_hang_da_chon: viTri >= 0 ? viTri + 1 : null,
+      so_goi_y: goiY.suggested.length,
+      diem_hang_1: goiY.suggested[0]?.score ?? null,
+      diem_da_chon: viTri >= 0 ? goiY.suggested[viTri].score : null,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) { toast.error('Chưa nhập nội dung nhiệm vụ'); return; }
     if (form.quantity_completed > form.quantity_assigned) {
@@ -220,7 +241,7 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
       toast.error('Nhiệm vụ có độ mật không được lưu nội dung diễn giải trong hệ thống');
       return;
     }
-    onSave({
+    const daLuuId = await onSave({
       ...form,
       description: isClassified ? undefined : form.description || undefined,
       file_reference: isClassified ? form.file_reference || undefined : undefined,
@@ -231,6 +252,8 @@ export const TaskModal = ({ task, users, catalogItems, canEdit, currentUser, onC
       assigned_basis: form.assigned_basis || undefined,
       deadline: new Date(form.deadline).toISOString(),
     });
+
+    if (daLuuId !== null) ghiNhatKyGoiY(daLuuId);
   };
 
   const handleAddComment = async () => {

@@ -83,19 +83,29 @@ const Tasks = () => {
     } catch { toast.error('Không ghi nhận được yêu cầu chỉnh sửa'); }
   };
 
-  const handleSave = async (data: Partial<Task>) => {
+  /**
+   * Trả về mã nhiệm vụ đã lưu, hoặc null nếu lưu hỏng.
+   *
+   * Hộp nhiệm vụ cần biết kết quả để chỉ ghi nhật ký gợi ý phân công khi việc
+   * giao thực sự xảy ra — ghi cả lượt lưu hỏng thì sổ đầy quyết định chưa từng có.
+   */
+  const handleSave = async (data: Partial<Task>): Promise<string | null> => {
     try {
+      let id: string | null = modalTask?._id ?? null;
       if (modalTask?._id) {
         await taskApi.update(modalTask._id, data);
         toast.success('Đã cập nhật nhiệm vụ');
       } else {
-        await taskApi.create({ ...data, period_month: period.month, period_year: period.year });
+        const moi = await taskApi.create({ ...data, period_month: period.month, period_year: period.year });
+        id = moi?._id ?? null;
         toast.success('Đã giao nhiệm vụ mới');
       }
       setModalTask(undefined);
       fetchData();
+      return id;
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? 'Không lưu được nhiệm vụ');
+      return null;
     }
   };
 

@@ -189,12 +189,23 @@ export interface MoHinh {
   chat_luong: ChatLuongMoHinh | null;
 }
 
+/** Lãnh đạo làm theo gợi ý phân công tới mức nào — xem services/nhat_ky_goi_y.py */
+export interface DongThuanPhanCong {
+  tong: number;
+  theo_hang_1: number;
+  theo_goi_y_khac: number;
+  ngoai_danh_sach: number;
+  ty_le_theo_goi_y: number | null;
+  ghi_chu: string;
+}
+
 export interface SoDangKyMoHinh {
   mo_hinh: MoHinh[];
   auc_threshold: number;
   so_mau_toi_thieu: number;
   ranh_gioi: { tieu_de: string; noi_dung: string }[];
   ghi_chu_du_lieu_mau: string;
+  dong_thuan_phan_cong: DongThuanPhanCong;
 }
 
 export interface TheHoTroAI {
@@ -252,6 +263,23 @@ export const aiApi = {
   moHinh: async () => {
     const res = await api.get<SoDangKyMoHinh>('/ai/models');
     return res.data;
+  },
+
+  /**
+   * Ghi lại một lượt giao nhiệm vụ có mở gợi ý phân công.
+   *
+   * Gửi SAU khi nhiệm vụ đã lưu xong, và nuốt lỗi: đây là số liệu theo dõi, hỏng
+   * đường truyền thì thôi, không được làm hỏng việc giao nhiệm vụ của người dùng.
+   */
+  ghiNhatKyGoiY: async (luot: {
+    nhiem_vu_id?: string | null;
+    da_chon_id?: string | null;
+    xep_hang_da_chon: number | null;
+    so_goi_y: number;
+    diem_hang_1?: number | null;
+    diem_da_chon?: number | null;
+  }) => {
+    try { await api.post('/ai/nhat-ky-goi-y', luot); } catch { /* bỏ qua */ }
   },
 
   tomTat: async () => {

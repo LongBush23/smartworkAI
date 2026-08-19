@@ -10,10 +10,11 @@ do cấp có thẩm quyền xác định theo công thức của Hướng dẫn 
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from backend.dependencies import require_leader_or_above, require_director_or_above, require_admin
 from backend.security import get_current_user
-from backend.services import so_dang_ky_mo_hinh
+from backend.services import nhat_ky_goi_y, so_dang_ky_mo_hinh
 from backend.services.ai import anomaly, assignment, guideline, risk
 
 router = APIRouter()
@@ -30,7 +31,7 @@ async def models(current_user: dict = Depends(require_leader_or_above)):
     CHỈ ĐỌC. Khác `POST /retrain`, endpoint này không huấn luyện lại mô hình mà
     cả đơn vị đang dùng — mở trang xem không được làm đổi thứ đang chạy.
     """
-    return await so_dang_ky_mo_hinh.danh_sach()
+    return await so_dang_ky_mo_hinh.danh_sach(current_user)
 
 
 @router.get("/tom-tat")
@@ -42,6 +43,44 @@ async def tom_tat(current_user: dict = Depends(get_current_user)):
     đúng bằng phạm vi của các endpoint sinh ra từng con số.
     """
     return await so_dang_ky_mo_hinh.tom_tat_ho_tro(current_user)
+
+
+# ================= NHẬT KÝ GỢI Ý PHÂN CÔNG =================
+
+class LuotGoiY(BaseModel):
+    """Một lượt lãnh đạo giao nhiệm vụ sau khi mở gợi ý phân công."""
+
+    nhiem_vu_id: Optional[str] = None
+    da_chon_id: Optional[str] = None
+    # None = chọn người hoàn toàn ngoài danh sách mô hình đưa ra
+    xep_hang_da_chon: Optional[int] = Field(None, ge=1, le=50)
+    so_goi_y: int = Field(..., ge=0, le=50)
+    diem_hang_1: Optional[float] = None
+    diem_da_chon: Optional[float] = None
+
+
+@router.post("/nhat-ky-goi-y", status_code=201)
+async def ghi_nhat_ky_goi_y(
+    body: LuotGoiY,
+    current_user: dict = Depends(require_leader_or_above),
+):
+    """
+    Ghi lại một quyết định phân công có mở gợi ý.
+
+    Giao diện gửi lên SAU khi nhiệm vụ đã lưu thành công — ghi trước thì sổ đầy
+    những quyết định chưa từng xảy ra. Chỉ ghi thứ hạng và điểm, không ghi nội
+    dung nhiệm vụ.
+    """
+    await nhat_ky_goi_y.ghi(
+        nguoi_quyet_dinh=current_user,
+        nhiem_vu_id=body.nhiem_vu_id,
+        da_chon_id=body.da_chon_id,
+        xep_hang_da_chon=body.xep_hang_da_chon,
+        so_goi_y=body.so_goi_y,
+        diem_hang_1=body.diem_hang_1,
+        diem_da_chon=body.diem_da_chon,
+    )
+    return {"da_ghi": True}
 
 
 def _scope_department(current_user: dict, department_id: Optional[str]) -> Optional[str]:

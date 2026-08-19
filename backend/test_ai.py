@@ -813,3 +813,128 @@ def test_moi_duong_dan_tren_dai_ho_tro_deu_co_trang_that():
 
     thieu = sorted(d for d in can_kiem if d not in co_san)
     assert not thieu, f"Đường dẫn không có route tương ứng trong App.tsx: {thieu}"
+
+
+# ---------------------------------------------------------------------------
+# Nhật ký gợi ý phân công — chứng minh "người quyết định" bằng số
+# ---------------------------------------------------------------------------
+
+class FakeCollectionGhi(FakeCollection):
+    """Như FakeCollection nhưng nhớ lại những gì đã được ghi vào."""
+
+    def __init__(self, docs=None):
+        super().__init__(docs)
+        self.da_ghi = []
+
+    async def insert_one(self, doc):
+        self.da_ghi.append(doc)
+        self.docs.append(doc)
+        return type("Res", (), {"inserted_id": "x"})()
+
+
+class FakeDBGhi(FakeDB):
+    def __init__(self, **collections):
+        super().__init__(**collections)
+        self.ai_suggestion_logs = FakeCollectionGhi()
+        self.kpi_evaluations = FakeCollectionGhi()
+
+
+@pytest.mark.asyncio
+async def test_ghi_nhat_ky_khong_luu_noi_dung_nhiem_vu(monkeypatch):
+    """
+    Nhiệm vụ có độ mật cũng đi qua đây. Bản ghi chỉ được mang mã, thứ hạng và
+    điểm — lọt một trường nội dung là rò rỉ ngay trong sổ theo dõi của chính
+    hệ thống.
+    """
+    from backend.services import nhat_ky_goi_y
+
+    gia = FakeDBGhi()
+    monkeypatch.setattr(nhat_ky_goi_y, "db", gia)
+
+    await nhat_ky_goi_y.ghi(
+        nguoi_quyet_dinh={"_id": "u1", "name": "Trần Minh Đức", "department_id": "d1"},
+        nhiem_vu_id="t1", da_chon_id="u9",
+        xep_hang_da_chon=None, so_goi_y=5,
+        diem_hang_1=99.0, diem_da_chon=None,
+    )
+
+    ban_ghi = gia.ai_suggestion_logs.da_ghi[0]
+    for cam in ("title", "description", "classification", "noi_dung", "ten_nhiem_vu"):
+        assert cam not in ban_ghi, f"Bản ghi mang theo trường {cam!r}"
+
+
+@pytest.mark.asyncio
+async def test_ghi_nhat_ky_khong_dung_toi_ky_danh_gia(monkeypatch):
+    """
+    Ranh giới cứng: ghi nhận một quyết định phân công không được làm xê dịch điểm
+    KPI của bất kỳ ai. Sổ chỉ được chạm đúng collection của chính nó.
+    """
+    from backend.services import nhat_ky_goi_y
+
+    gia = FakeDBGhi()
+    monkeypatch.setattr(nhat_ky_goi_y, "db", gia)
+
+    await nhat_ky_goi_y.ghi(
+        nguoi_quyet_dinh={"_id": "u1", "name": "A", "department_id": "d1"},
+        nhiem_vu_id="t1", da_chon_id="u2", xep_hang_da_chon=1, so_goi_y=5,
+    )
+
+    assert len(gia.ai_suggestion_logs.da_ghi) == 1
+    assert gia.kpi_evaluations.da_ghi == [], "Sổ nhật ký đã ghi vào kỳ đánh giá"
+
+
+@pytest.mark.asyncio
+async def test_tom_tat_tach_dung_ba_muc_do_lam_theo_goi_y(monkeypatch):
+    from backend.services import nhat_ky_goi_y
+
+    ban_ghi = (
+        [{"xep_hang_da_chon": 1, "department_id": "d1"}] * 6
+        + [{"xep_hang_da_chon": 3, "department_id": "d1"}] * 2
+        + [{"xep_hang_da_chon": None, "department_id": "d1"}] * 2
+    )
+    monkeypatch.setattr(nhat_ky_goi_y, "db", FakeDB(ai_suggestion_logs=ban_ghi))
+
+    tt = await nhat_ky_goi_y.tom_tat()
+    assert tt["tong"] == 10
+    assert tt["theo_hang_1"] == 6
+    assert tt["theo_goi_y_khac"] == 2
+    assert tt["ngoai_danh_sach"] == 2
+    assert tt["ty_le_theo_goi_y"] == 0.8
+
+
+@pytest.mark.asyncio
+async def test_tom_tat_chua_co_luot_nao_van_tra_ve_so_khong(monkeypatch):
+    """
+    Chưa có dữ liệu thì trả tổng 0 chứ không trả None: giao diện vẫn hiện khối và
+    nói thẳng là chưa có lượt nào, thay vì giấu đi làm người xem tưởng hệ thống
+    không có cơ chế này.
+    """
+    from backend.services import nhat_ky_goi_y
+
+    monkeypatch.setattr(nhat_ky_goi_y, "db", FakeDB(ai_suggestion_logs=[]))
+    tt = await nhat_ky_goi_y.tom_tat()
+
+    assert tt["tong"] == 0
+    assert tt["ty_le_theo_goi_y"] is None
+
+
+def test_goi_ai_van_khong_ghi_co_so_du_lieu():
+    """
+    Sổ nhật ký là chỗ ĐẦU TIÊN trong mảng mô hình có ghi dữ liệu, nên đặt ngoài
+    `services/ai` là có chủ đích: gói đó vẫn phải chỉ đọc. Test này chặn việc một
+    lần sửa sau này lén đưa lệnh ghi vào gói mô hình.
+    """
+    import pathlib
+
+    goi_ai = pathlib.Path(__file__).parent / "services" / "ai"
+    loi = []
+    for path in sorted(goi_ai.glob("*.py")):
+        source = path.read_text()
+        for lenh in ("insert_one", "insert_many", "update_one", "update_many",
+                     "delete_one", "delete_many", "find_one_and_update"):
+            if lenh in source:
+                loi.append(f"{path.name} gọi {lenh}")
+
+    assert not loi, (
+        "Gói services/ai chỉ được đọc dữ liệu:\n  " + "\n  ".join(loi)
+    )

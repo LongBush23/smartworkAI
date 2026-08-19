@@ -23,6 +23,7 @@ from typing import Any, Dict, List
 
 from backend.config import GEMINI_MODEL
 from backend.services.ai import anomaly, assignment, guideline, risk
+from backend.services import nhat_ky_goi_y
 from backend.services.tro_ly import gemini
 from backend.services.tro_ly.cong_cu import BANG_CONG_CU
 
@@ -277,14 +278,22 @@ def _tham_so(ma: str) -> List[Dict[str, str]]:
     ]
 
 
-async def danh_sach() -> Dict[str, Any]:
+async def danh_sach(nguoi_dung: Dict[str, Any] = None) -> Dict[str, Any]:
     """
-    Toàn bộ sổ đăng ký, kèm chất lượng thực tế của hai mô hình hồi quy.
+    Toàn bộ sổ đăng ký, kèm chất lượng thực tế của hai mô hình hồi quy và tỷ lệ
+    lãnh đạo làm theo gợi ý phân công.
 
     Chất lượng lấy từ bộ đệm mô hình đang chạy — chỉ huấn luyện khi bộ đệm còn
     trống, không huấn luyện lại mô hình đang dùng.
+
+    Thống kê đồng thuận giới hạn theo đơn vị của người xem, giống mọi số liệu
+    khác: lãnh đạo, chỉ huy chỉ thấy đơn vị mình, quản trị hệ thống thấy toàn bộ.
     """
     chat_luong = await risk.tom_tat_chat_luong()
+
+    nguoi_dung = nguoi_dung or {}
+    phong = None if nguoi_dung.get("role") == "admin" else nguoi_dung.get("department_id")
+    dong_thuan = await nhat_ky_goi_y.tom_tat(phong)
 
     mo_hinh = []
     for m in MO_HINH:
@@ -301,6 +310,7 @@ async def danh_sach() -> Dict[str, Any]:
         "so_mau_toi_thieu": chat_luong["so_mau_toi_thieu"],
         "ranh_gioi": RANH_GIOI,
         "ghi_chu_du_lieu_mau": GHI_CHU_DU_LIEU_MAU,
+        "dong_thuan_phan_cong": dong_thuan,
     }
 
 

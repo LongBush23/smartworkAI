@@ -3,10 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Cpu, Shield, Globe, ScanEye, RefreshCw, ArrowRight, Info, FileCode2,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, UserCheck,
 } from 'lucide-react';
 import { aiApi } from '../lib/ai-api';
-import type { MoHinh, ChatLuongMoHinh, SoDangKyMoHinh } from '../lib/ai-api';
+import type { MoHinh, ChatLuongMoHinh, SoDangKyMoHinh, DongThuanPhanCong } from '../lib/ai-api';
 import { dangXemDauVet, datXemDauVet, useDauVetAI } from '../lib/dau-vet-ai';
 import { layMe } from '../lib/me';
 
@@ -204,6 +204,77 @@ const KhoiChatLuong = ({
             Huấn luyện lúc {new Date(cl.trained_at + 'Z').toLocaleString('vi-VN')}
           </p>
         )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * "Người quyết định vẫn là người" — đo bằng số thay vì bằng lời cam kết.
+ *
+ * Ranh giới thứ nhất của hệ thống nói mô hình không quyết định thay người. Câu đó
+ * tới nay không kiểm chứng được bằng gì. Khối này đếm các lượt giao nhiệm vụ có
+ * mở gợi ý và tách ra: bao nhiêu lượt lãnh đạo chọn đúng người mô hình xếp đầu,
+ * bao nhiêu lượt chọn người khác trong danh sách, bao nhiêu lượt chọn người hoàn
+ * toàn ngoài danh sách. Cột cuối mới là cột đáng giá.
+ */
+const KhoiNguoiQuyetDinh = ({ dt }: { dt: DongThuanPhanCong }) => {
+  const phan = [
+    { ma: 'hang_1', nhan: 'Chọn đúng người mô hình xếp đầu', so: dt.theo_hang_1, mau: 'bg-navy-700' },
+    { ma: 'khac', nhan: 'Chọn người khác trong danh sách', so: dt.theo_goi_y_khac, mau: 'bg-navy-400' },
+    { ma: 'ngoai', nhan: 'Chọn người ngoài danh sách', so: dt.ngoai_danh_sach, mau: 'bg-gold-500' },
+  ];
+
+  return (
+    <div className="bg-white border border-navy-200 rounded-sm">
+      <div className="px-4 py-2 border-b border-navy-200 bg-navy-50 flex items-center gap-2">
+        <UserCheck size={14} className="text-navy-600 shrink-0" />
+        <p className="section-label">Ai là người quyết định — đo bằng số</p>
+      </div>
+
+      <div className="p-4">
+        {dt.tong === 0 ? (
+          <p className="text-xs text-navy-500 leading-relaxed">
+            Chưa có lượt giao nhiệm vụ nào mở gợi ý phân công. Cơ chế ghi nhận đã sẵn
+            sàng; số liệu sẽ hiện ra sau khi lãnh đạo dùng gợi ý ở hộp giao nhiệm vụ.
+          </p>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="text-2xl font-bold text-navy-800 tabular">
+                {dt.ngoai_danh_sach}/{dt.tong}
+              </span>
+              <span className="text-xs text-navy-600">
+                lượt lãnh đạo chọn người NGOÀI danh sách mô hình đưa ra
+              </span>
+            </div>
+
+            <div className="flex h-2.5 w-full bg-navy-100 rounded-sm overflow-hidden mt-2">
+              {phan.map(p => (
+                <div
+                  key={p.ma}
+                  className={p.mau}
+                  style={{ width: `${(p.so / dt.tong) * 100}%` }}
+                  title={`${p.nhan}: ${p.so}/${dt.tong}`}
+                />
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+              {phan.map(p => (
+                <span key={p.ma} className="flex items-center gap-1.5 text-[11px] text-navy-600">
+                  <span className={`h-2.5 w-2.5 rounded-sm shrink-0 ${p.mau}`} />
+                  {p.nhan}
+                  <span className="tabular font-medium text-navy-800">
+                    {p.so} ({((p.so / dt.tong) * 100).toFixed(0)}%)
+                  </span>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+
+        <p className="text-[10px] text-navy-400 leading-relaxed mt-2.5">{dt.ghi_chu}</p>
       </div>
     </div>
   );
@@ -414,6 +485,8 @@ const MoHinhAI = () => {
         ))}
       </div>
 
+      <KhoiNguoiQuyetDinh dt={so.dong_thuan_phan_cong} />
+
       <div className="bg-gold-50 border border-gold-300 rounded-sm px-3 py-2 flex items-start gap-2">
         <Info size={13} className="text-gold-700 shrink-0 mt-0.5" />
         <div>
@@ -428,9 +501,15 @@ const MoHinhAI = () => {
 
       <p className="text-[11px] text-navy-500 flex items-start gap-1.5">
         <ScanEye size={12} className="shrink-0 mt-0.5 text-teal-700" />
-        Bật <strong className="font-medium text-navy-700">Xem dấu vết AI</strong> rồi đi lại các
-        trang: mọi khối do mô hình sinh ra sẽ được viền lại và gắn số hiệu, bấm nhãn là quay
-        về đúng thẻ mô hình ở trang này.
+        {/*
+          Cả câu nằm trong MỘT thẻ span. Để chữ rời làm con trực tiếp của flex thì
+          "Xem dấu vết AI" thành một ô riêng và bị bóp thành cột dọc trên điện thoại.
+        */}
+        <span>
+          Bật <strong className="font-medium text-navy-700">Xem dấu vết AI</strong> rồi đi lại các
+          trang: mọi khối do mô hình sinh ra sẽ được viền lại và gắn số hiệu, bấm nhãn là quay
+          về đúng thẻ mô hình ở trang này.
+        </span>
       </p>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
