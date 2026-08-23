@@ -1,5 +1,29 @@
 import api from './api';
 
+/**
+ * Tải một tệp Excel về máy: gọi API dạng blob rồi kích hoạt tải xuống qua thẻ
+ * <a> ẩn. Đọc tên tệp máy chủ đặt trong header Content-Disposition, có tên
+ * mặc định phòng khi trình duyệt chặn đọc header đó (CORS).
+ */
+async function taiTepExcel(
+  url: string,
+  tenTepMacDinh: string,
+  params?: Record<string, unknown>,
+) {
+  const res = await api.get(url, { params, responseType: 'blob' });
+  const contentDisposition = res.headers['content-disposition'] as string | undefined;
+  const tenTep = contentDisposition?.match(/filename="?([^"]+)"?/)?.[1] ?? tenTepMacDinh;
+
+  const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = tenTep;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
 export interface KPICatalogItem {
   id: string;
   task_name: string;
@@ -208,6 +232,15 @@ export const kpiApi = {
   getRanking: async (params?: { department_id?: string; period_month?: number; period_year?: number }) => {
     const res = await api.get<KPIRankingItem[]>('/kpi/scores/ranking', { params });
     return res.data;
+  },
+
+  // Kết xuất Excel theo mẫu Phụ lục Hướng dẫn 20-HD/ĐUCA
+  exportPhieuCaNhan: async (id: string) => {
+    await taiTepExcel(`/kpi/evaluations/${id}/xuat-excel`, `phieu-ca-nhan-${id}.xlsx`);
+  },
+
+  exportBangTongHop: async (params?: { department_id?: string; period_month?: number; period_year?: number }) => {
+    await taiTepExcel('/kpi/scores/ranking/xuat-excel', 'bang-tong-hop-xep-loai.xlsx', params);
   },
 
   // Criteria templates (Phụ lục tiêu chí chung)

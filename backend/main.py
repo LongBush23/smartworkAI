@@ -35,6 +35,11 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Mặc định trình duyệt chỉ cho JS đọc một số header phản hồi cố định.
+    # Không khai báo dòng này thì tính năng tải phiếu Excel (đọc tên tệp máy
+    # chủ đặt trong Content-Disposition) chạy được ở máy cục bộ nhưng hỏng
+    # khi giao diện triển khai khác nguồn (Vercel) với backend.
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

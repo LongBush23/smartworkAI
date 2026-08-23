@@ -144,23 +144,32 @@ def calculate_total_score(total_E: float, kpi_score: float) -> float:
 
 # ================= 6. EVALUATION PROCESSING =================
 
+def chon_bang_diem_dung(eval_doc: Dict[str, Any]) -> List[dict]:
+    """
+    Bảng chấm điểm dùng làm căn cứ tính A, B, C: ưu tiên kết quả thẩm định
+    ở Bước 2 (review); nếu chưa thẩm định thì lấy đề xuất tự đánh giá ở
+    Bước 1 (self_evaluation). Dùng chung cho việc xác định điểm KPI
+    (process_evaluation_approval) và kết xuất phiếu đánh giá ra Excel, để
+    hai nơi luôn hiển thị đúng cùng một bảng chấm điểm.
+    """
+    review_data = eval_doc.get("review") or {}
+    self_eval = eval_doc.get("self_evaluation") or {}
+
+    if review_data.get("task_scores"):
+        return review_data["task_scores"]
+    if self_eval.get("task_scores"):
+        return self_eval["task_scores"]
+    return []
+
+
 async def process_evaluation_approval(evaluation_id: str, approved_by: str) -> Dict[str, Any]:
     """Process full KPI calculation when an evaluation is approved"""
     eval_doc = await db.kpi_evaluations.find_one({"_id": ObjectId(evaluation_id)})
     if not eval_doc:
         raise ValueError("Evaluation not found")
-        
-    # Get tasks from review if exists, else from self_evaluation
-    review_data = eval_doc.get("review", {})
-    self_eval = eval_doc.get("self_evaluation", {})
-    
-    if review_data and "task_scores" in review_data:
-        task_scores = review_data["task_scores"]
-    elif self_eval and "task_scores" in self_eval:
-        task_scores = self_eval["task_scores"]
-    else:
-        task_scores = []
-        
+
+    task_scores = chon_bang_diem_dung(eval_doc)
+
     # Calculate points
     total_assigned_points = sum(task.get("kpi_point", 0) for task in task_scores)
     

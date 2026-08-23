@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { kpiApi } from '../lib/kpi-api';
 import type { KPIRankingItem } from '../lib/kpi-api';
-import { Award, FileBarChart, Filter } from 'lucide-react';
+import { Award, Download, FileBarChart, Filter } from 'lucide-react';
 import { KPI_GROUP_LABELS, KPI_GROUP_COLORS, ROLE_LABELS } from '../lib/kpi-api';
 
 const KPIResults = () => {
@@ -35,6 +35,12 @@ const KPIResults = () => {
   const getGroupName = (group: string) => KPI_GROUP_LABELS[group] ?? group;
   const getGroupColor = (group: string) => KPI_GROUP_COLORS[group] ?? 'text-gray-700 bg-gray-100 border-gray-200';
 
+  const xuatBangTongHop = async () => {
+    try {
+      await kpiApi.exportBangTongHop({ period_year: filterPeriod.year, period_month: filterPeriod.month });
+    } catch { alert('Lỗi xuất bảng tổng hợp Excel'); }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -43,6 +49,13 @@ const KPIResults = () => {
           Kết quả Đánh giá KPI
         </h1>
         
+        <div className="flex items-center gap-3">
+        <button
+          onClick={xuatBangTongHop}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <Download className="h-4 w-4" /> Xuất Excel
+        </button>
         <div className="flex items-center space-x-4 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
           <Filter className="h-4 w-4 text-gray-400 ml-2" />
           <select 
@@ -65,6 +78,7 @@ const KPIResults = () => {
               return <option key={year} value={year}>Năm {year}</option>;
             })}
           </select>
+        </div>
         </div>
       </div>
 

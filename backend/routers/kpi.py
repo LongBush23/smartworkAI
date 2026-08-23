@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List, Optional
+from fastapi.responses import StreamingResponse
+from typing import Dict, List, Optional
 from datetime import datetime
+from io import BytesIO
 from bson import ObjectId
 
 from backend.database import db
@@ -17,8 +19,9 @@ from backend.models.kpi_schemas import (
 )
 from backend.services.kpi_service import (
     process_evaluation_approval, get_kpi_ranking,
-    get_quarterly_kpi, get_yearly_kpi
+    get_quarterly_kpi, get_yearly_kpi, chon_bang_diem_dung
 )
+from backend.services.kpi_export_service import dung_phieu_ca_nhan, dung_bang_tong_hop
 
 from backend.models.kpi_criteria import CRITERIA_TEMPLATES as _CRITERIA_TEMPLATES
 
@@ -296,7 +299,101 @@ async def get_ranking(
     ranking = await get_kpi_ranking(department_id, period_month, period_year)
     return ranking
 
-# ================= 5. TEMPLATES TIÊU CHÍ CHUNG (PHỤ LỤC) =================
+# ================= 5. KẾT XUẤT EXCEL (PHỤ LỤC) =================
+
+def _phan_hoi_excel(wb, ten_tep: str) -> StreamingResponse:
+    dem = BytesIO()
+    wb.save(dem)
+    dem.seek(0)
+    return StreamingResponse(
+        dem,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{ten_tep}"'},
+    )
+
+
+@router.get("/evaluations/{eval_id}/xuat-excel")
+async def xuat_phieu_ca_nhan(
+    eval_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Kết xuất phiếu đánh giá cá nhân một kỳ ra Excel theo mẫu Phụ lục, để đơn
+    vị in ra ký và lưu hồ sơ.
+
+    Nhiệm vụ có độ mật vượt cấp độ tiếp cận của NGƯỜI XUẤT PHIẾU (không phải
+    người được đánh giá) bị che theo đúng quy tắc của security_policy.redact()
+    — xem kpi_export_service.ten_hien_thi_nhiem_vu.
+    """
+    eval_doc = await db.kpi_evaluations.find_one({"_id": ObjectId(eval_id)})
+    if not eval_doc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy kỳ đánh giá")
+
+    if current_user["role"] == "staff" and eval_doc["target_id"] != str(current_user["_id"]):
+        raise HTTPException(status_code=403, detail="Bạn không có quyền xuất phiếu của đối tượng này")
+
+    task_scores = chon_bang_diem_dung(eval_doc)
+    task_ids = {ts["task_id"] for ts in task_scores if ts.get("task_id") and ObjectId.is_valid(ts["task_id"])}
+    tasks_by_id: Dict[str, dict] = {}
+    if task_ids:
+        async for t in db.tasks.find({"_id": {"$in": [ObjectId(tid) for tid in task_ids]}}):
+            tasks_by_id[str(t.pop("_id"))] = t
+
+    for section, id_field in (("review", "reviewed_by"), ("approval", "approved_by")):
+        du_lieu = eval_doc.get(section) or {}
+        uid = du_lieu.get(id_field)
+        if uid and ObjectId.is_valid(uid):
+            nguoi = await db.users.find_one({"_id": ObjectId(uid)})
+            if nguoi:
+                du_lieu[f"{id_field}_name"] = nguoi.get("name", nguoi.get("username"))
+
+    ten_don_vi = ""
+    dept_id = eval_doc.get("department_id")
+    if dept_id and ObjectId.is_valid(dept_id):
+        dept = await db.departments.find_one({"_id": ObjectId(dept_id)})
+        if dept:
+            ten_don_vi = dept.get("name", "")
+
+    wb = dung_phieu_ca_nhan(
+        evaluation=eval_doc,
+        tasks_by_id=tasks_by_id,
+        current_user=current_user,
+        ten_don_vi=ten_don_vi,
+    )
+    return _phan_hoi_excel(wb, f"phieu-ca-nhan-{eval_id}.xlsx")
+
+
+@router.get("/scores/ranking/xuat-excel")
+async def xuat_bang_tong_hop(
+    department_id: Optional[str] = None,
+    period_year: Optional[int] = None,
+    period_month: Optional[int] = None,
+    current_user: dict = Depends(require_leader_or_above)
+):
+    """Kết xuất bảng tổng hợp xếp loại của đơn vị ra Excel."""
+    if current_user["role"] in ["director", "leader"] and not department_id:
+        department_id = current_user.get("department_id")
+
+    ranking = await get_kpi_ranking(department_id, period_month, period_year)
+
+    ten_don_vi = ""
+    if department_id and ObjectId.is_valid(department_id):
+        dept = await db.departments.find_one({"_id": ObjectId(department_id)})
+        if dept:
+            ten_don_vi = dept.get("name", "")
+
+    if period_month and period_year:
+        ky = f"Tháng {period_month}/{period_year}"
+    elif period_year:
+        ky = f"Năm {period_year}"
+    else:
+        ky = "Tất cả các kỳ"
+
+    wb = dung_bang_tong_hop(items=ranking, ten_don_vi=ten_don_vi, ky_danh_gia=ky)
+    return _phan_hoi_excel(wb, f"bang-tong-hop-xep-loai-{period_year or 'tat-ca'}.xlsx")
+
+
+# ================= 6. TEMPLATES TIÊU CHÍ CHUNG (PHỤ LỤC) =================
 
 @router.get("/criteria-templates")
 async def get_criteria_templates(

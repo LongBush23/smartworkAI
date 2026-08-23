@@ -3,14 +3,28 @@
   "configurations": [
     {
       "name": "kpi-backend",
-      "runtimeExecutable": "backend/venv/bin/uvicorn",
-      "runtimeArgs": ["backend.main:app", "--reload", "--port", "8000"],
-      "port": 8000
+      "runtimeExecutable": "backend/venv/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "backend.main:app",
+        "--port",
+        "8000"
+      ],
+      "port": 8000,
+      "autoPort": false
     },
     {
       "name": "kpi-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5199", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5199",
+        "--strictPort"
+      ],
       "port": 5199,
       "cwd": "frontend"
     }

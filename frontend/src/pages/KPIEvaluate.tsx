@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { kpiApi } from '../lib/kpi-api';
 import type { KPIEvaluation, TaskKPIScore } from '../lib/kpi-api';
-import { Check, ClipboardList, Send, ChevronRight } from 'lucide-react';
+import { Check, ClipboardList, Send, ChevronRight, Download } from 'lucide-react';
 import { GuidelineLookup } from '../components/GuidelineLookup';
 import { KhungMoHinh } from '../components/KhungMoHinh';
 import { layMe } from '../lib/me';
@@ -140,6 +140,12 @@ const KPIEvaluate = () => {
     } catch { alert('Lỗi phê duyệt'); }
   };
 
+  const xuatPhieuExcel = async (id: string) => {
+    try {
+      await kpiApi.exportPhieuCaNhan(id);
+    } catch { alert('Lỗi xuất phiếu Excel'); }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
   }
@@ -232,9 +238,15 @@ const KPIEvaluate = () => {
                       </button>
                     )}
                     {ev.overall_status === 'approved' && ev.approval && (
-                      <div className="text-right">
+                      <div className="text-right space-y-1.5">
                         <p className="text-lg font-bold text-indigo-700">{Number(ev.approval.kpi_score).toFixed(1)} điểm</p>
                         <p className="text-xs text-gray-500">KPI đã xác định</p>
+                        <button
+                          onClick={() => xuatPhieuExcel(ev.id)}
+                          className="flex items-center gap-1 text-xs px-2 py-1 border border-indigo-300 text-indigo-700 rounded hover:bg-indigo-50"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Xuất phiếu Excel
+                        </button>
                       </div>
                     )}
                   </div>
